@@ -1,0 +1,117 @@
+const OpenAI = require('openai');
+require('dotenv').config();
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // Ensure we're handling a POST request
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { element1, element2, isTest } = req.body;
+
+    if (!element1 || !element2) {
+      return res.status(400).json({ error: 'Missing required elements' });
+    }
+
+    // Check for API key
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // If this is just a test request, return a simple response
+    if (isTest) {
+      return res.status(200).json({
+        id: 'test_successful',
+        name: 'API Test',
+        icon: '✅',
+        category: 'test',
+        description: 'The OpenAI API connection is working correctly.'
+      });
+    }
+
+    // Create a prompt that describes what we want
+    const prompt = `
+      Generate a creative and educational result for combining these two elements in a drug-themed crafting game:
+      - Element 1: ${element1.name} (${element1.category})
+      - Element 2: ${element2.name} (${element2.category})
+      
+      The result should be a substance or drug-related item with a name, appropriate emoji icon, category, and brief description.
+      The result should be logical based on the input elements and have educational value about drug compounds, effects, or production methods.
+      
+      Be creative and scientifically accurate, but don't include harmful instructions. Focus on the pharmacology and social context.
+      
+      Respond with a JSON object in this format:
+      {
+        "id": "unique_id_based_on_inputs",
+        "name": "Name of Result",
+        "icon": "Emoji",
+        "category": "Category (one word like 'stimulant', 'opioid', 'equipment', 'process', etc.)",
+        "description": "Brief 1-2 sentence description with educational context"
+      }
+    `;
+
+    // Generate a response using GPT
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an educational assistant helping to create content for a game that teaches about drugs, their effects, and social policies. Provide accurate, educational information without glorifying drug use."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 350
+    });
+
+    // Parse the response
+    const textResponse = response.choices[0].message.content.trim();
+    
+    // Try to extract a valid JSON object
+    let jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Failed to generate valid combination');
+    }
+    
+    const result = JSON.parse(jsonMatch[0]);
+    
+    // Validate the result has the required fields
+    if (!result.name || !result.icon || !result.category) {
+      throw new Error('Generated result is missing required fields');
+    }
+    
+    // Set a unique ID if not provided
+    if (!result.id) {
+      result.id = `${element1.id}_${element2.id}_${Date.now().toString(36)}`;
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error generating combination:', error);
+    return res.status(500).json({ error: 'Failed to generate combination' });
+  }
+}; 

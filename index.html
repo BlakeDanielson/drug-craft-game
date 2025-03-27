@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drug Craft | Gamifying our Collapse</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Drug Craft</h1>
+      <p>Combine raw materials to discover new substances in this educational exploration of drug crafting. Powered by AI.</p>
+    </header>
+    
+    <div class="game-container">
+      <div class="elements-panel">
+        <div class="search-container">
+          <input type="text" id="search-bar" placeholder="Search elements...">
+        </div>
+        <div id="categories" class="categories-container"></div>
+        <div id="elements-list" class="elements-list"></div>
+        <button id="reset-button" class="reset-button">Reset Discoveries</button>
+      </div>
+      
+      <div class="craft-area">
+        <div id="combination-zone" class="combination-zone">
+          <div id="first-element" class="drop-zone placeholder"></div>
+          <div class="plus-sign">+</div>
+          <div id="second-element" class="drop-zone placeholder"></div>
+        </div>
+        <div id="result-zone" class="result-zone">
+          <p>Combine elements to see the result</p>
+        </div>
+      </div>
+      
+      <div id="settings-panel" class="settings-panel">
+        <h3>API Settings</h3>
+        <div class="settings-row">
+          <span>OpenAI API:</span>
+          <div><span class="required-badge">Required</span></div>
+        </div>
+        <div class="settings-row">
+          <span>API Status:</span>
+          <div id="api-status"><span class="status-circle yellow"></span>Unknown</div>
+        </div>
+        <div class="settings-row">
+          <button id="test-api-button" class="test-button">Test API Connection</button>
+        </div>
+        <div class="api-info">
+          <p>This game requires an active OpenAI API connection to function.</p>
+          <p>Set your API key in the <code>.env</code> file.</p>
+        </div>
+      </div>
+    </div>
+    
+    <button id="toggle-settings" class="settings-toggle">⚙️</button>
+  </div>
+  
+  <!-- API Handler for standalone mode -->
+  <script src="api.js"></script>
+  <!-- Main Game Logic -->
+  <script src="game.js"></script>
+</body>
+</html> 
