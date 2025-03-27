@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', function() {
   ];
   
   // Cache for storing previously generated combinations
-  let combinationsCache = {};
+  let combinationCache = {};
   
   // Try to load cache from localStorage
   try {
     const savedCache = localStorage.getItem('drugCraftCombinations');
     if (savedCache) {
-      combinationsCache = JSON.parse(savedCache);
+      combinationCache = JSON.parse(savedCache);
     }
   } catch (e) {
     console.error('Error loading cache:', e);
@@ -80,14 +80,28 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize the game
   function initGame() {
-    renderElements();
+    loadFromLocalStorage();
     renderCategories();
-    setupEventListeners();
-    initializeSettings();
-    updateApiStatusDisplay();
+    renderElements();
     
-    // Test API on startup
-    testApiConnection();
+    // Add event listeners for the settings panel
+    document.querySelector('.settings-toggle').addEventListener('click', () => {
+      const panel = document.querySelector('.settings-panel');
+      panel.style.display = 'block';
+      testApiConnection();
+    });
+    
+    document.querySelector('.close-button').addEventListener('click', () => {
+      document.querySelector('.settings-panel').style.display = 'none';
+    });
+    
+    // Attach event listeners to elements
+    document.querySelectorAll('.element').forEach(element => {
+      element.addEventListener('click', handleElementClick);
+    });
+    
+    // Initialize the game area
+    updateCombinationArea();
   }
   
   // Initialize settings panel and controls
@@ -112,73 +126,56 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Test the API connection
   async function testApiConnection() {
-    updateApiStatus('testing');
-    testApiButton.disabled = true;
+    const apiStatusElement = document.getElementById('api-status');
+    apiStatusElement.textContent = 'Testing...';
+    apiStatusElement.className = 'status testing';
+    
+    const apiEndpoint = determineApiEndpoint();
+    const url = `${apiEndpoint}/generate-combination`;
+    
+    console.log('Testing API connection to:', url);
     
     try {
-      // Determine API endpoint
-      let apiUrl = determineApiEndpoint();
-      
-      // Create test elements
-      const testElement1 = { id: 'test', name: 'Test', icon: '🧪', category: 'test' };
-      const testElement2 = { id: 'api', name: 'Api', icon: '🔌', category: 'test' };
-      
-      // Make a test request to the server API
-      const response = await fetch(apiUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          element1: testElement1,
-          element2: testElement2,
-          context: 'drug_craft',
+          elements: ['Test Element 1', 'Test Element 2'],
           isTest: true
         }),
       });
       
-      if (!response.ok) {
-        throw new Error(`API test failed: ${response.statusText}`);
+      console.log('API test response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('API test response data:', data);
+        
+        apiStatusElement.textContent = 'Connected';
+        apiStatusElement.className = 'status connected';
+        
+        document.getElementById('api-message').textContent = 
+          'OpenAI API is available. New combinations will be generated using AI.';
+      } else {
+        const errorText = await response.text();
+        console.error('API test failed with response:', errorText);
+        
+        apiStatusElement.textContent = 'Error';
+        apiStatusElement.className = 'status error';
+        
+        document.getElementById('api-message').textContent = 
+          'Could not connect to OpenAI API. Please check your API key and try again.';
       }
-      
-      const result = await response.json();
-      
-      // API is available
-      updateApiStatus('available');
-      
-      // Show a brief notification of success
-      const originalContent = resultZone.innerHTML;
-      resultZone.innerHTML = `
-        <div class="element">
-          <span class="element-icon">✅</span> API Test Successful
-        </div>
-        <p class="description">OpenAI API is working! You can create AI-powered combinations.</p>
-      `;
-      
-      // Restore original content after a delay
-      setTimeout(() => {
-        resultZone.innerHTML = originalContent;
-      }, 3000);
     } catch (error) {
       console.error('API test error:', error);
-      updateApiStatus('unavailable');
       
-      // Show API unavailable message
-      const originalContent = resultZone.innerHTML;
-      resultZone.innerHTML = `
-        <div class="element">
-          <span class="element-icon">❌</span> API Unavailable
-        </div>
-        <p class="description">OpenAI API is not available. Please check your API key and connection.</p>
-        <p class="description">This game requires an active OpenAI API to function.</p>
-      `;
+      apiStatusElement.textContent = 'Disconnected';
+      apiStatusElement.className = 'status disconnected';
       
-      // Restore original content after a delay
-      setTimeout(() => {
-        resultZone.innerHTML = originalContent;
-      }, 5000);
-    } finally {
-      testApiButton.disabled = false;
+      document.getElementById('api-message').textContent = 
+        'Could not reach the API server. Please check your internet connection.';
     }
   }
   
@@ -231,18 +228,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Determine the appropriate API endpoint based on environment
+  // Determine the API endpoint based on environment
   function determineApiEndpoint() {
-    if (window.location.hostname.includes('vercel.app') || 
-        window.location.hostname.includes('netlify.app')) {
-      return '/api/generate-combination';
-    } else if (window.location.hostname.includes('localhost') || 
-              window.location.hostname === '127.0.0.1') {
-      return '/api/generate-combination';
-    } else {
-      // Always return API endpoint, never local
-      return '/api/generate-combination';
+    const hostname = window.location.hostname;
+    
+    // For Vercel deployments
+    if (hostname.includes('vercel.app') || hostname.includes('.app') || hostname.includes('.com')) {
+      return '/api';
     }
+    
+    // For localhost development (assuming port 3000 for API server)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      // Check if we're running on the default serve port (3000) or using a static file server
+      const port = window.location.port;
+      if (port === '3000') {
+        return '/api'; // Next.js API routes
+      } else {
+        // When using a static file server like 'npx serve', we need to point to the API server
+        return 'http://localhost:3000/api';
+      }
+    }
+    
+    // For GitHub Pages or other static hosting
+    return '/api'; // Fallback to relative path
   }
   
   // Render category filters
@@ -372,8 +380,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const combinationKey = `${element1.id}+${element2.id}`;
     
     // Check if we already have this combination in cache
-    if (combinationsCache[combinationKey]) {
-      handleCombinationResult(combinationsCache[combinationKey]);
+    if (combinationCache[combinationKey]) {
+      handleCombinationResult(combinationCache[combinationKey]);
     } else {
       // API is required - check status first
       if (appSettings.apiStatus === 'unavailable') {
@@ -394,10 +402,10 @@ document.addEventListener('DOMContentLoaded', function() {
       
       try {
         // Generate combination with AI
-        const result = await generateCombination(element1, element2);
+        const result = await generateCombination([element1, element2]);
         
         // Store in cache
-        combinationsCache[combinationKey] = result;
+        combinationCache[combinationKey] = result;
         saveToLocalStorage();
         
         // Process the result
@@ -446,61 +454,54 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Generate a combination using AI
-  async function generateCombination(element1, element2) {
+  async function generateCombination(elements) {
+    // Check if we have a cached result
+    const key = elements.sort().join('+');
+    if (combinationCache[key]) {
+      console.log('Using cached combination for:', key);
+      return combinationCache[key];
+    }
+
+    console.log('Generating combination for elements:', elements);
+    
+    const apiEndpoint = determineApiEndpoint();
+    const url = `${apiEndpoint}/generate-combination`;
+    
     try {
-      // Check if API is available
-      if (appSettings.apiStatus === 'unavailable') {
-        throw new Error('OpenAI API is not available. Please check your API key and connection.');
-      }
+      console.log('Sending API request to:', url);
       
-      // Determine API endpoint
-      let apiUrl = determineApiEndpoint();
-      
-      console.log(`Calling API at: ${apiUrl}`);
-      
-      // Call the server API
-      const response = await fetch(apiUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          element1,
-          element2,
-          context: 'drug_craft'
-        }),
+        body: JSON.stringify({ elements }),
       });
       
+      console.log('API response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('API error:', errorText);
+        throw new Error(`API error: ${response.status} ${errorText}`);
       }
+
+      const result = await response.json();
+      console.log('API response data:', result);
       
-      const data = await response.json();
-      
-      // Validate the response has required fields
-      if (!data.name || !data.icon || !data.category) {
-        throw new Error('Invalid API response, missing required fields');
+      // Validate the result
+      if (!result || !result.result || !result.name || !result.description || !result.category) {
+        console.error('Invalid API response format:', result);
+        throw new Error('Invalid response from API');
       }
-      
-      // If we get here with a successful response, update API status
-      if (appSettings.apiStatus !== 'available') {
-        updateApiStatus('available');
-      }
-      
-      // Ensure we have a unique ID
-      const result = {
-        id: data.id || `${element1.id}_${element2.id}_${Date.now().toString(36)}`,
-        name: data.name,
-        icon: data.icon,
-        category: data.category,
-        description: data.description || `A combination of ${element1.name} and ${element2.name}`
-      };
+
+      // Cache the result
+      combinationCache[key] = result;
+      saveToLocalStorage();
       
       return result;
     } catch (error) {
-      console.error('Error in combination generation:', error);
-      // Update API status on error
-      updateApiStatus('unavailable');
+      console.error('Error generating combination:', error);
       throw error;
     }
   }
@@ -519,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function saveToLocalStorage() {
     try {
       localStorage.setItem('drugCraftElements', JSON.stringify(discoveredElements));
-      localStorage.setItem('drugCraftCombinations', JSON.stringify(combinationsCache));
+      localStorage.setItem('drugCraftCombinations', JSON.stringify(combinationCache));
     } catch (e) {
       console.error('Error saving to localStorage:', e);
     }
