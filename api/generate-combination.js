@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
           messages: [
             {
               role: "user",
-              content: "hello, who are you"
+              content: "is the api connected?"
             }
           ],
           max_tokens: 50
@@ -96,20 +96,20 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-      Generate a creative and educational result for combining these elements in a drug crafting game:
+      Generate a creative and educational result for combining these elements in a drug and drug-culture-based crafting game:
       ${elementInfo}
       
-      The result should be a substance, drug, preparation method, or drug-related item with a name, appropriate emoji icon, category, and brief description.
-      The result should be logically derived from the input elements and have educational value about drug compounds, effects, or production methods.
+      The result should be a specific compound, drug, piece of paraphernalia, culture object, or an similar drug-related item with a name, appropriate emoji icon, category, and brief description.
+      The result should be logically derived from the input elements, but don't be afraid to make creative connections and have fun with it. It is a game after all.
       
-      Be creative and scientifically accurate, but focus on the educational context rather than providing harmful instructions. Think about chemistry, pharmacology, and biology concepts.
+      Be creative and culturally accurate, all your combinations should make sense to either scientists with a deep understanding of drug pharmacology, or to drug users and stoners and people interested in the use of drugs and the culture associated with it.
       
       Respond with a JSON object in this format:
       {
         "id": "unique_id_based_on_inputs",
         "name": "Name of Result",
         "icon": "Emoji",
-        "category": "Category (like 'drug', 'intermediate', 'equipment', 'method', etc.)",
+        "category": "Category (like 'drug', 'intermediate', 'equipment', 'method', 'plant', 'substance', 'process', 'chemical', etc.)",
         "description": "Brief 1-2 sentence description with educational context about effects, history, or chemistry",
         "result": true
       }
@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an educational assistant helping to create content for a game that teaches about drugs, their effects, and pharmacology. Provide accurate, educational information without glorifying drug use or providing specific harmful instructions."
+          content: "You are an pharmacology expert and recreational drug enthusiast helping to create content for a game that lets users craft and build drugs and drug-related items. Everything from coca leaves and ethanol to bongs and tin foil."
         },
         {
           role: "user",
