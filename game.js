@@ -272,7 +272,7 @@ async function testApiConnection() {
 // Update the API status and save it
 function updateApiStatus(status) {
   appSettings.apiStatus = status;
-  saveSettings();
+  saveToLocalStorage();
   updateApiStatusDisplay();
 }
 
@@ -475,6 +475,23 @@ function setupEventListeners() {
   // Handle combination zone drops
   firstElement.addEventListener('drop', handleDrop);
   secondElement.addEventListener('drop', handleDrop);
+  
+  // Category filtering
+  categoriesContainer.addEventListener('click', function(e) {
+    const categoryButton = e.target.closest('.category');
+    if (!categoryButton) return;
+    
+    activeCategory = categoryButton.dataset.category;
+    
+    // Update active class
+    document.querySelectorAll('.category').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    categoryButton.classList.add('active');
+    
+    // Re-render elements with the new filter
+    renderElements(searchBar.value.trim());
+  });
   
   // Setting panel events
   settingsToggle.addEventListener('click', function() {
@@ -798,6 +815,14 @@ function saveToLocalStorage() {
   }
 }
 
+// Generate a unique ID for an element based on its name
+function generateId(name) {
+  // Remove spaces and special characters, convert to lowercase
+  const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Add a timestamp to ensure uniqueness
+  return `${base}_${Date.now()}`;
+}
+
 // Update the combination area to its initial state
 function updateCombinationArea() {
   // Reset the combination zone
@@ -805,8 +830,5 @@ function updateCombinationArea() {
   // Make sure the result zone shows the default message
   resultZone.innerHTML = '<p>Combine elements to see the result</p>';
 }
-
-// Initialize the game
-initGame();
 
 // ... rest of the existing code ... 
