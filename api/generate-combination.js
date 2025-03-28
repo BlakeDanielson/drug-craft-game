@@ -96,34 +96,41 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a factually accurate result for combining these elements in a drug and drug-culture-based crafting game:
-      ${elementInfo}
+    You're a drug enthusiast with actual scientific knowledge. Create logical combinations that follow both science and drug culture knowledge:
+
+    ${elementInfo}
     
-    IMPORTANT: The result MUST be a real, existing thing that actually exists in the real world - not fictional or made-up. Examples include:
-    - Actual drug compounds (cocaine, hash oil, amphetamine salt)
-    - Real preparation methods (extraction, distillation)
-    - Actual drug paraphernalia (bong, pipe, rolling papers)
-    - Real cultural objects (roach clip, stash box)
-    - Chemical compounds (acetone, pseudoephedrine)
+    APPROACH:
+    - For basic science combinations: Use real physical/chemical reactions (e.g., "water + fire = steam")
+    - For drug culture combinations: Create practical, real-world items (e.g., "cannabis + paper = joint")
+    - Combinations should be things that actually make sense to someone who knows about drugs
     
-    Do NOT invent fictional drugs, techniques, or equipment. For example:
-    - "Blazewave" (made-up drug) ❌
-    - "Psychedelic enhancer" (too vague) ❌
-    - "Dream booster" (fictional) ❌
+    EXAMPLES OF GOOD COMBINATIONS:
+    - "water + fire" → "steam"
+    - "water + air" → "humidity"
+    - "water + earth" → "clay"
+    - "fire + air" → "smoke"
+    - "fire + earth" → "ash"
+    - "air + earth" → "wind"
+    - "coca leaf + sulfuric acid" → "cocaine extraction"
+    - "cannabis + pipe" → "loaded pipe"
+    - "loaded pipe + fire" → "lit pipe"
+    - "ethanol + plant material" → "tincture"
+    - "container + ethanol" → "container of ethanol"
+    - "container of ethanol + fire" → "ethanol extraction"
+    - "cannabis + heat" → "decarboxylated cannabis"
+    - "cannabis + container" → "container of cannabis"
     
-    The result should be a specific, named item that exists in reality, with an appropriate emoji icon, accurate category, and factual description.
-    If the elements cannot be reasonably combined into something real, use them to create a real product that would be used alongside those elements or in drug culture.
-    
-    Focus on accuracy above creativity. Your responses should resemble an encyclopedia of drug culture rather than creative fiction.
+    Don't overthink it. Keep combinations simple and obvious. When given two elements that have an obvious combination in drug culture, provide that result.
     
     Respond with a JSON object in this format:
     {
-      "id": "unique_id_based_on_inputs",
-      "name": "Name of Real Result (specific, not generic)",
-      "icon": "Emoji",
-      "category": "Category (like 'drug', 'equipment', 'chemical', 'technique', etc.)",
-      "description": "Brief 1-2 sentence factual description with accurate information about use, effects, chemistry, or cultural context",
-      "result": true
+      "id": "unique_id",
+      "name": "Result Name",
+      "icon": "Appropriate Emoji",
+      "category": "material/chemical/tool/technique/drug",
+      "description": "Brief description of what this is (1-2 sentences)",
+      "complexity": "low/medium/high"
     }
     `;
 
@@ -133,14 +140,14 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a pharmacology expert and drug culture historian with extensive knowledge of real-world drugs, preparation methods, paraphernalia, and cultural artifacts. Your expertise includes both scientific and cultural aspects of drug use. You provide factual, accurate information without glorifying drug use or providing harmful detailed instructions."
+          content: "You are a knowledgeable drug enthusiast with a scientific background. You understand both the chemistry of substances and their practical applications in drug culture. You provide straightforward, logical combinations based on real-world principles."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.3,
+      temperature: 0.5,
       max_tokens: 350
     });
 
