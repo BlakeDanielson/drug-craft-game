@@ -10,46 +10,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Cache for storing previously generated combinations
   let combinationCache = {};
   
-  // Try to load cache from localStorage
-  try {
-    const savedCache = localStorage.getItem('drugCraftCombinations');
-    if (savedCache) {
-      combinationCache = JSON.parse(savedCache);
-    }
-  } catch (e) {
-    console.error('Error loading cache:', e);
-  }
-  
   // Track discovered elements
   let discoveredElements = [...initialElements];
-  
-  // Try to load discovered elements from localStorage
-  try {
-    const savedElements = localStorage.getItem('drugCraftElements');
-    if (savedElements) {
-      discoveredElements = JSON.parse(savedElements);
-    }
-  } catch (e) {
-    console.error('Error loading elements:', e);
-  }
   
   // App settings with default values
   let appSettings = {
     useApi: true,  // Always true as we're removing fallbacks
     apiStatus: 'unknown'
   };
-  
-  // Try to load settings from localStorage
-  try {
-    const savedSettings = localStorage.getItem('drugCraftSettings');
-    if (savedSettings) {
-      const loadedSettings = JSON.parse(savedSettings);
-      // Always force useApi to true
-      appSettings = { ...loadedSettings, useApi: true };
-    }
-  } catch (e) {
-    console.error('Error loading settings:', e);
-  }
   
   // DOM elements
   const elementsList = document.getElementById('elements-list');
@@ -76,18 +44,83 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize the game
   function initGame() {
+    console.log('Game initialization started');
+    console.log('Initial elements:', initialElements);
+    
+    // Load saved data
     loadFromLocalStorage();
+    console.log('After loading from localStorage, discovered elements:', discoveredElements);
+    
+    // Make sure we have the basic elements
+    ensureBasicElements();
+    
+    // Render the UI
     renderCategories();
     renderElements();
     
-    // Set up event listeners for elements
+    // Set up event listeners
     setupEventListeners();
     
-    // Set up settings panel functionality
+    // Set up settings panel
     initializeSettings();
     
     // Initialize the game area
     updateCombinationArea();
+    
+    console.log('Game initialization completed');
+  }
+  
+  // Ensure the basic elements are always available
+  function ensureBasicElements() {
+    // Make sure each initial element exists in discoveredElements
+    initialElements.forEach(initialElement => {
+      const elementExists = discoveredElements.some(element => element.id === initialElement.id);
+      if (!elementExists) {
+        console.log('Adding missing basic element:', initialElement.name);
+        discoveredElements.push(initialElement);
+      }
+    });
+    
+    // Save to ensure persistence
+    saveToLocalStorage();
+  }
+  
+  // Load data from localStorage
+  function loadFromLocalStorage() {
+    // Try to load cache from localStorage
+    try {
+      const savedCache = localStorage.getItem('drugCraftCombinations');
+      if (savedCache) {
+        combinationCache = JSON.parse(savedCache);
+      }
+    } catch (e) {
+      console.error('Error loading cache:', e);
+    }
+    
+    // Try to load discovered elements from localStorage
+    try {
+      const savedElements = localStorage.getItem('drugCraftElements');
+      if (savedElements) {
+        discoveredElements = JSON.parse(savedElements);
+      } else {
+        discoveredElements = [...initialElements];
+      }
+    } catch (e) {
+      console.error('Error loading elements:', e);
+      discoveredElements = [...initialElements];
+    }
+    
+    // Try to load settings from localStorage
+    try {
+      const savedSettings = localStorage.getItem('drugCraftSettings');
+      if (savedSettings) {
+        const loadedSettings = JSON.parse(savedSettings);
+        // Always force useApi to true
+        appSettings = { ...loadedSettings, useApi: true };
+      }
+    } catch (e) {
+      console.error('Error loading settings:', e);
+    }
   }
   
   // Initialize settings panel and controls
@@ -249,6 +282,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
+    console.log('Rendering categories:', categories);
+    
     // Render category buttons
     categoriesContainer.innerHTML = '';
     categories.forEach(category => {
@@ -258,6 +293,15 @@ document.addEventListener('DOMContentLoaded', function() {
       button.dataset.category = category;
       categoriesContainer.appendChild(button);
     });
+    
+    // Make sure we have an active category
+    if (categories.length > 0 && !categories.includes(activeCategory)) {
+      activeCategory = 'all';
+      const allCategoryButton = categoriesContainer.querySelector('[data-category="all"]');
+      if (allCategoryButton) {
+        allCategoryButton.classList.add('active');
+      }
+    }
   }
   
   // Render all discovered elements in the panel
@@ -273,10 +317,24 @@ document.addEventListener('DOMContentLoaded', function() {
       return matchesSearch && matchesCategory;
     });
     
+    // Debug output
+    console.log('Rendering elements:', filteredElements);
+    
     filteredElements.forEach(element => {
       const elementDiv = createElementDiv(element);
       elementsList.appendChild(elementDiv);
+      
+      // Attach event listener directly to each element as we create it
+      elementDiv.addEventListener('click', handleElementClick);
     });
+    
+    // If no elements are shown, make sure we show a message
+    if (filteredElements.length === 0) {
+      const noElementsMsg = document.createElement('p');
+      noElementsMsg.textContent = 'No elements match your filter.';
+      noElementsMsg.className = 'no-elements-message';
+      elementsList.appendChild(noElementsMsg);
+    }
   }
   
   // Create an element div
@@ -290,11 +348,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup event listeners
   function setupEventListeners() {
-    // Element selection - attach to all elements
-    document.querySelectorAll('.element').forEach(element => {
-      element.addEventListener('click', handleElementClick);
-    });
-    
     // Reset button
     resetButton.addEventListener('click', function() {
       if (confirm('Are you sure you want to reset all your discoveries? This will keep previously generated combinations but clear your inventory.')) {
