@@ -173,41 +173,84 @@ document.addEventListener('DOMContentLoaded', function() {
       
       console.log('API test response status:', response.status);
       
+      // Check if the response is OK
       if (response.ok) {
-        const data = await response.json();
-        console.log('API test response data:', data);
-        
-        // Update API status
-        appSettings.apiStatus = 'available';
-        saveToLocalStorage();
-        
-        apiStatusElement.textContent = 'Connected';
-        apiStatusElement.className = 'status connected';
-        
-        // Show the AI's response to "hello, who are you"
-        apiMessage.innerHTML = `
-          <p>OpenAI API is working! New combinations will be generated using AI.</p>
-          <div class="ai-test-response">
-            <p><strong>AI Test Response:</strong></p>
-            <p>${data.aiResponse || 'No response'}</p>
-          </div>
-        `;
+        // Check the content type to make sure it's JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          // We have JSON
+          const data = await response.json();
+          console.log('API test response data:', data);
+          
+          // Update API status
+          appSettings.apiStatus = 'available';
+          saveToLocalStorage();
+          
+          apiStatusElement.textContent = 'Connected';
+          apiStatusElement.className = 'status connected';
+          
+          // Show the AI's response
+          apiMessage.innerHTML = `
+            <p>OpenAI API is working! New combinations will be generated using AI.</p>
+            <div class="ai-test-response">
+              <p><strong>AI Test Response:</strong></p>
+              <p>${data.aiResponse || 'No response'}</p>
+            </div>
+          `;
+        } else {
+          // Not JSON - probably HTML error page
+          const textResponse = await response.text();
+          console.error('API returned non-JSON response:', textResponse);
+          
+          // Update API status
+          appSettings.apiStatus = 'unavailable';
+          saveToLocalStorage();
+          
+          apiStatusElement.textContent = 'Error';
+          apiStatusElement.className = 'status error';
+          
+          apiMessage.innerHTML = `
+            <p>API server responded but with incorrect format.</p>
+            <p class="error-message">Expected JSON but received HTML/text</p>
+            <p>Your Vercel deployment might be missing the API route.</p>
+          `;
+        }
       } else {
-        const errorData = await response.json();
-        console.error('API test failed with response:', errorData);
-        
-        // Update API status
-        appSettings.apiStatus = 'unavailable';
-        saveToLocalStorage();
-        
-        apiStatusElement.textContent = 'Error';
-        apiStatusElement.className = 'status error';
-        
-        apiMessage.innerHTML = `
-          <p>Could not connect to OpenAI API.</p>
-          <p class="error-message">${errorData.message || 'Unknown error'}</p>
-          <p>${errorData.details || 'Please check your API key and try again.'}</p>
-        `;
+        try {
+          // Try to parse as JSON first
+          const errorData = await response.json();
+          console.error('API test failed with response:', errorData);
+          
+          // Update API status
+          appSettings.apiStatus = 'unavailable';
+          saveToLocalStorage();
+          
+          apiStatusElement.textContent = 'Error';
+          apiStatusElement.className = 'status error';
+          
+          apiMessage.innerHTML = `
+            <p>Could not connect to OpenAI API.</p>
+            <p class="error-message">${errorData.message || 'Unknown error'}</p>
+            <p>${errorData.details || 'Please check your API key and try again.'}</p>
+          `;
+        } catch (parseError) {
+          // If it's not JSON, get the text content
+          const textResponse = await response.text();
+          console.error('Failed to parse error response as JSON:', textResponse);
+          
+          // Update API status
+          appSettings.apiStatus = 'unavailable';
+          saveToLocalStorage();
+          
+          apiStatusElement.textContent = 'Error';
+          apiStatusElement.className = 'status error';
+          
+          apiMessage.innerHTML = `
+            <p>API server returned an error (${response.status}).</p>
+            <p class="error-message">The API endpoint might not be set up correctly.</p>
+            <p>Check your Vercel deployment settings.</p>
+          `;
+        }
       }
     } catch (error) {
       console.error('API test error:', error);
@@ -219,10 +262,16 @@ document.addEventListener('DOMContentLoaded', function() {
       apiStatusElement.textContent = 'Disconnected';
       apiStatusElement.className = 'status disconnected';
       
+      let errorMessage = error.message;
+      // Check for common syntax error when getting HTML instead of JSON
+      if (errorMessage.includes("Unexpected token '<'")) {
+        errorMessage = "Received HTML instead of JSON. API endpoint may not exist.";
+      }
+      
       apiMessage.innerHTML = `
         <p>Could not reach the API server.</p>
-        <p class="error-message">${error.message}</p>
-        <p>Please check your internet connection and server status.</p>
+        <p class="error-message">${errorMessage}</p>
+        <p>Please check your Vercel deployment includes the API folder.</p>
       `;
     }
   }
@@ -283,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // For Vercel deployments
     if (hostname.includes('vercel.app') || hostname.includes('.app') || hostname.includes('.com')) {
+      // For Vercel, the API routes are in the /api directory
       basePath = '/api';
     }
     // For localhost development (assuming port 3000 for API server)
@@ -301,6 +351,8 @@ document.addEventListener('DOMContentLoaded', function() {
       basePath = '/api'; // Fallback to relative path
     }
     
+    console.log('API base path:', basePath);
+    // Make sure we use the correct URL format for Vercel deployments
     return `${basePath}/generate-combination`;
   }
   
@@ -563,15 +615,35 @@ document.addEventListener('DOMContentLoaded', function() {
       
       console.log('API response status:', response.status);
       
+      // Check if the response is OK
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error:', errorText);
+        let errorMessage = `API error: ${response.status}`;
+        try {
+          // Try to parse as JSON first
+          const errorData = await response.json();
+          console.error('API error:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          // If it's not JSON, get the text snippet
+          const textResponse = await response.text();
+          console.error('API returned non-JSON error:', textResponse.substring(0, 150));
+          if (textResponse.includes('<')) {
+            errorMessage = 'API returned HTML instead of JSON. The endpoint might not exist.';
+          }
+        }
         
         // Update API status
         appSettings.apiStatus = 'unavailable';
-        saveSettings();
+        saveToLocalStorage();
         
-        throw new Error(`API error: ${response.status} ${errorText}`);
+        throw new Error(errorMessage);
+      }
+
+      // Check content type to make sure it's JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('API returned non-JSON response type:', contentType);
+        throw new Error('API returned incorrect content type. Expected JSON.');
       }
 
       const result = await response.json();
@@ -585,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Update API status to available since request succeeded
       appSettings.apiStatus = 'available';
-      saveSettings();
+      saveToLocalStorage();
       
       // Cache the result
       combinationCache[key] = result;
