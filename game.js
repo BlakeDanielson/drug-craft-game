@@ -421,12 +421,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Create an element div
+  // Create an element div for display
   function createElementDiv(element) {
     const div = document.createElement('div');
-    div.className = 'element';
+    div.className = `element ${element.complexity ? `complexity-${element.complexity.toLowerCase()}` : ''}`;
     div.dataset.id = element.id;
-    div.innerHTML = `<span class="element-icon">${element.icon}</span> ${element.name}`;
+    
+    div.innerHTML = `
+      <span class="element-icon">${element.icon}</span>
+      <span class="element-name">${element.name}</span>
+      ${element.complexity ? `<span class="complexity-badge complexity-${element.complexity.toLowerCase()}">${element.complexity}</span>` : ''}
+    `;
+    
     return div;
   }
   
@@ -550,32 +556,77 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Handle the result of a combination
+  // Handle a successful combination result
   function handleCombinationResult(result) {
-    // Check if this is a new discovery
-    const isNewDiscovery = !discoveredElements.some(e => e.id === result.id);
+    console.log('Handling combination result:', result);
     
-    if (isNewDiscovery) {
-      // Add to discovered elements
-      discoveredElements.push(result);
-      saveToLocalStorage();
-      
-      // Update the elements panel
-      renderElements();
-      renderCategories();
+    const resultZone = document.getElementById('result-zone');
+    resultZone.innerHTML = '';
+    
+    if (!result || typeof result !== 'object') {
+      resultZone.innerHTML = '<div class="error">Invalid result received from API</div>';
+      return;
     }
     
-    // Show result
-    resultZone.innerHTML = `
-      <div class="element">
-        <span class="element-icon">${result.icon}</span> ${result.name}
-        ${isNewDiscovery ? ' <span style="color: #4ecdc4;">(New Discovery!)</span>' : ''}
+    // Required properties
+    if (!result.name || !result.description || !result.category || !result.icon) {
+      resultZone.innerHTML = '<div class="error">Invalid result data: missing required properties</div>';
+      return;
+    }
+    
+    // Extract properties
+    const { name, description, category, icon } = result;
+    const id = result.id || generateId(name);
+    const complexity = result.complexity || 'Medium'; // Default to Medium if not provided
+    
+    const resultElement = document.createElement('div');
+    resultElement.className = `result-element element complexity-${complexity.toLowerCase()}`;
+    
+    const isNewDiscovery = !discoveredElements.some(elem => elem.id === id || elem.name === name);
+    
+    // Create the full element object
+    const newElement = {
+      id: id,
+      name: name,
+      description: description,
+      category: category,
+      icon: icon,
+      complexity: complexity
+    };
+    
+    // Add to discovered elements if it's new
+    if (isNewDiscovery) {
+      discoveredElements.push(newElement);
+      saveToLocalStorage();
+      renderCategories();
+      renderElements(); // Refresh the elements display
+    }
+    
+    // Prepare the status message
+    const statusMessage = isNewDiscovery 
+      ? `<div class="new-element">New discovery! Added to your collection.</div>`
+      : `<div class="already-discovered">You already discovered this element.</div>`;
+    
+    // Build the result HTML
+    let complexityBadge = '';
+    if (complexity) {
+      complexityBadge = `<span class="complexity-badge complexity-${complexity.toLowerCase()}">${complexity}</span>`;
+    }
+    
+    resultElement.innerHTML = `
+      <div class="element-icon">${icon}</div>
+      <div>
+        <div class="element-name">${name} ${complexityBadge}</div>
+        <div class="category">${category}</div>
+        <p>${description}</p>
+        ${statusMessage}
       </div>
-      ${result.description ? `<p class="description">${result.description}</p>` : ''}
     `;
     
-    // Reset the combination zone after a delay
-    setTimeout(resetCombinationZone, 3000);
+    resultZone.appendChild(resultElement);
+    
+    // Reset combination zone
+    resetCombinationZone();
   }
   
   // Generate a combination using AI
