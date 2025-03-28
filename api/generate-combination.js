@@ -96,21 +96,21 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-      Generate a creative and educational result for combining these elements in an alchemy-themed crafting game:
+      Generate a creative and educational result for combining these elements in a drug crafting game:
       ${elementInfo}
       
-      The result should be a new element, substance, or material with a name, appropriate emoji icon, category, and brief description.
-      The result should be logically derived from the input elements and have educational value about how these elements might interact.
+      The result should be a substance, drug, preparation method, or drug-related item with a name, appropriate emoji icon, category, and brief description.
+      The result should be logically derived from the input elements and have educational value about drug compounds, effects, or production methods.
       
-      Be creative but logical, focusing on natural phenomena or interesting combinations. Think of classical element combinations.
+      Be creative and scientifically accurate, but focus on the educational context rather than providing harmful instructions. Think about chemistry, pharmacology, and biology concepts.
       
       Respond with a JSON object in this format:
       {
         "id": "unique_id_based_on_inputs",
         "name": "Name of Result",
         "icon": "Emoji",
-        "category": "Category (like 'element', 'material', 'phenomenon', 'energy', etc.)",
-        "description": "Brief 1-2 sentence description with educational context",
+        "category": "Category (like 'drug', 'intermediate', 'equipment', 'method', etc.)",
+        "description": "Brief 1-2 sentence description with educational context about effects, history, or chemistry",
         "result": true
       }
     `;
@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an educational assistant helping to create content for an alchemy-themed crafting game that teaches about elemental combinations. Provide interesting, creative, and logical combinations of basic elements."
+          content: "You are an educational assistant helping to create content for a game that teaches about drugs, their effects, and pharmacology. Provide accurate, educational information without glorifying drug use or providing specific harmful instructions."
         },
         {
           role: "user",

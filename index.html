@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elemental Craft | Alchemy Explorer</title>
+  <title>Drug Craft | Educational Drug Simulator</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Elemental Craft</h1>
-      <p>Combine the basic elements of Air, Water, Fire, and Earth to discover new substances in this educational exploration of alchemy. Powered by AI.</p>
+      <h1>Drug Craft</h1>
+      <p>Combine raw materials to discover substances in this educational exploration of drug chemistry and pharmacology. Powered by AI.</p>
     </header>
     
     <div class="game-container">
@@ -46,12 +46,12 @@
         </div>
         <div class="settings-row">
           <span>API Status:</span>
-          <div id="api-status"><span class="status-circle yellow"></span>Unknown</div>
+          <div id="api-status" class="status"><span class="status-circle yellow"></span>Unknown</div>
         </div>
         <div class="settings-row">
           <button id="test-api-button" class="test-button">Test API Connection</button>
         </div>
-        <div class="api-info">
+        <div id="api-message" class="api-info">
           <p>This game requires an active OpenAI API connection to function.</p>
           <p>Set your API key in the <code>.env</code> file.</p>
         </div>
