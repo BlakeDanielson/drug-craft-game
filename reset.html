@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drug Craft - Reset Discoveries</title>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #1a1a2e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    h1 {
+      color: #4ecdc4;
+      margin-bottom: 20px;
+    }
+    
+    .card {
+      background-color: #252a41;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    p {
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    
+    .warning {
+      color: #ff6b6b;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    
+    button {
+      background-color: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #e35d5d;
+    }
+    
+    .console {
+      background-color: #1a1a2e;
+      border: 1px solid #3a3a5e;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 30px;
+      width: 100%;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+    
+    .console-line {
+      margin: 5px 0;
+      color: #bbb;
+    }
+    
+    .success {
+      color: #4ecdc4;
+    }
+    
+    .error {
+      color: #ff6b6b;
+    }
+    
+    .back-link {
+      margin-top: 20px;
+      color: #4ecdc4;
+      text-decoration: none;
+    }
+    
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Drug Craft Data Reset</h1>
+    <p>This utility will reset all your discoveries and combinations in the Drug Craft game.</p>
+    <p class="warning">Warning: This action cannot be undone. All your progress will be lost!</p>
+    <button id="resetButton">Reset All Data</button>
+    <div id="console" class="console">
+      <div class="console-line">Ready to reset data. Click the button above to begin.</div>
+    </div>
+    <a href="index.html" class="back-link">← Back to Game</a>
+  </div>
+  
+  <script>
+    // Console output function
+    function log(message, type = 'normal') {
+      const consoleElem = document.getElementById('console');
+      const lineElem = document.createElement('div');
+      lineElem.className = `console-line ${type}`;
+      lineElem.textContent = message;
+      consoleElem.appendChild(lineElem);
+      consoleElem.scrollTop = consoleElem.scrollHeight;
+    }
+    
+    // Reset button click handler
+    document.getElementById('resetButton').addEventListener('click', function() {
+      log('Starting reset process...', 'normal');
+      
+      // List of localStorage keys used by the game
+      const keysToRemove = [
+        'drugCraftElements',
+        'drugCraftCombinations',
+        'drugCraftSettings'
+      ];
+      
+      // Check if we have data to remove
+      let dataFound = false;
+      keysToRemove.forEach(key => {
+        if (localStorage.getItem(key)) {
+          dataFound = true;
+          const data = localStorage.getItem(key);
+          try {
+            const parsedData = JSON.parse(data);
+            const itemCount = parsedData && typeof parsedData === 'object' ? 
+              (Array.isArray(parsedData) ? parsedData.length : Object.keys(parsedData).length) : 
+              'unknown size';
+            log(`Found data for ${key}: ${itemCount} items`, 'normal');
+          } catch (e) {
+            log(`Found data for ${key} (unable to parse)`, 'normal');
+          }
+        } else {
+          log(`No data found for ${key}`, 'normal');
+        }
+      });
+      
+      if (!dataFound) {
+        log('No Drug Craft data found in localStorage.', 'error');
+        log('Either you haven\'t played the game yet or data has already been cleared.', 'error');
+        return;
+      }
+      
+      // Confirm before deletion
+      if (confirm('Are you sure you want to reset all Drug Craft discoveries and combinations? This cannot be undone.')) {
+        // Remove each key
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          log(`Removed ${key} from localStorage`, 'success');
+        });
+        
+        log('Reset complete! All Drug Craft data has been cleared.', 'success');
+        log('Return to the game to start with fresh discoveries.', 'success');
+        
+        // Disable the reset button
+        document.getElementById('resetButton').disabled = true;
+      } else {
+        log('Reset cancelled. Your data is still intact.', 'normal');
+      }
+    });
+  </script>
+</body>
+</html> 
