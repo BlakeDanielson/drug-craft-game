@@ -96,32 +96,19 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a factually accurate result for combining these elements in a drug and drug-culture-based crafting game:
+    Generate a factually accurate result for combining these elements in a crafting game:
+    produce a result that is the most common and well-known combination of the elements.
+    if there is no obvious combination, make one up, but make it believable.
+
+    reference @https://infinite-craft.com/ if needed.
       ${elementInfo}
-    
-    IMPORTANT: The result MUST be a real, existing thing that actually exists in the real world - not fictional or made-up. Examples include:
-    - Actual drug compounds (cocaine, hash oil, amphetamine salt)
-    - Real preparation methods (extraction, distillation)
-    - Actual drug paraphernalia (bong, pipe, rolling papers)
-    - Real cultural objects (roach clip, stash box)
-    - Chemical compounds (acetone, pseudoephedrine)
-    
-    Do NOT invent fictional drugs, techniques, or equipment. For example:
-    - "Blazewave" (made-up drug) ❌
-    - "Psychedelic enhancer" (too vague) ❌
-    - "Dream booster" (fictional) ❌
-    
-    The result should be a specific, named item that exists in reality, with an appropriate emoji icon, accurate category, and factual description.
-    If the elements cannot be reasonably combined into something real, use them to create a real product that would be used alongside those elements or in drug culture.
-    
-    Focus on accuracy above creativity. Your responses should resemble an encyclopedia of drug culture rather than creative fiction.
     
     Respond with a JSON object in this format:
     {
       "id": "unique_id_based_on_inputs",
       "name": "Name of Real Result (specific, not generic)",
       "icon": "Emoji",
-      "category": "Category (like 'drug', 'equipment', 'chemical', 'technique', etc.)",
+      "category": "Category (like 'element', 'equipment', 'chemical', 'object', 'plant', 'animal', 'mineral', 'artifact', etc.)",
       "description": "Brief 1-2 sentence factual description with accurate information about use, effects, chemistry, or cultural context",
       "result": true
     }
@@ -133,7 +120,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a pharmacology expert and drug culture historian with extensive knowledge of real-world drugs, preparation methods, paraphernalia, and cultural artifacts. Your expertise includes both scientific and cultural aspects of drug use. You provide factual, accurate information without glorifying drug use or providing harmful detailed instructions."
+          content: "You are a scientific expert with extensive knowledge of all real world elements and their combinations. You understand how everything in the world is made and created."
         },
         {
           role: "user",
