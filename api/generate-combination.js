@@ -96,15 +96,20 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-      Generate a creative and educational result for combining these elements in a drug and drug-culture-based crafting game:
+    Generate a creative and educational result for combining these elements in a drug and drug-culture-based crafting game:
       ${elementInfo}
-      
-      The result should be a specific compound, drug, piece of paraphernalia, culture object, or an similar drug-related item with a name, appropriate emoji icon, category, and brief description.
-      The result should be logically derived from the input elements, but don't be afraid to make creative connections and have fun with it. It is a game after all.
-      
-      Be creative and culturally accurate, all your combinations should make sense to either scientists with a deep understanding of drug pharmacology, or to drug users and stoners and people interested in the use of drugs and the culture associated with it.
-      Your combinations should be real world things that actually exist until the elements you receive cannot realistically be combined into a real object that can be justified based on the elements you received.
-      
+    
+    The most important rules that you have to follow with every single answer that you are not allowed to use the words ' + firstWord + " and " + secondWord + ' as part of your answer and that you are only allowed to answer with one thing. ' +
+        'DO NOT INCLUDE THE WORDS ' + firstWord + " and " + secondWord + ' as part of the answer!!!!! The words ' + firstWord + " and " + secondWord + ' may NOT be part of the answer. ' +
+        'No sentences, no phrases, no multiple words, no punctuation, no special characters, no numbers, no emojis, no URLs, no code, no commands, no programming' +
+        'The answer has to be a noun. ' +
+        'The order of the both words does not matter, both are equally important. ' +
+        'The answer has to be related to both words and the context of the words. ' +
+        'The answer can either be a combination of the words or the role of one word in relation to the other. ' +
+        'Answers can be things, materials, people, companies, animals, occupations, food, places, objects, emotions, events, concepts, natural phenomena, body parts, vehicles, sports, clothing, furniture, technology, buildings, technology, instruments, beverages, plants, academic subjects and everything else you can think of that is a noun.'
+    
+      Be creative and culturally accurate, all your combinations should make sense to drug users and stoners and people interested in the use of drugs and the culture associated with it.
+
       Respond with a JSON object in this format:
       {
         "id": "unique_id_based_on_inputs",
@@ -122,7 +127,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an pharmacology expert and recreational drug enthusiast helping to create content for a game that lets users craft and build drugs and drug-related items. Everything from coca leaves and ethanol to bongs and tin foil."
+          content: "You are a creative assistant in a drug crafting game. Your role is to help players develop unique drug compounds by combining two drug-related words into one innovative noun."
         },
         {
           role: "user",
