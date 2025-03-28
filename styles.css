@@ -53,7 +53,6 @@ header p {
   max-height: 600px;
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .search-container {
@@ -104,8 +103,6 @@ header p {
 .elements-list {
   overflow-y: auto;
   flex-grow: 1;
-  max-height: calc(100% - 130px); /* Adjust for header and search */
-  padding-right: 5px; /* Add padding for scrollbar */
 }
 
 .craft-area {
@@ -171,29 +168,29 @@ header p {
 }
 
 .element {
-  background-color: #252a41;
+  display: inline-block;
+  background-color: #3a415a;
+  color: #fff;
+  padding: 10px 15px;
+  margin: 5px;
   border-radius: 5px;
-  padding: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  position: relative;
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+  user-select: none;
 }
 
 .element:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.element.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
 }
 
 .element-icon {
-  margin-right: 8px;
-  font-size: 20px;
-}
-
-.element-name {
-  flex: 1;
+  margin-right: 5px;
 }
 
 .reset-button {
@@ -390,12 +387,7 @@ input:checked + .slider:before {
   }
   
   .elements-panel {
-    max-height: 400px; /* Smaller on mobile but still scrollable */
-    height: auto;
-  }
-  
-  .elements-list {
-    max-height: 300px; /* Ensure it's scrollable on mobile */
+    max-height: 250px;
   }
   
   .craft-area {
@@ -484,68 +476,4 @@ input:checked + .slider:before {
 .error-message {
   color: #ff6b6b;
   font-weight: bold;
-}
-
-/* Complexity styling */
-.complexity-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-left: 8px;
-  text-transform: uppercase;
-  font-weight: bold;
-}
-
-.complexity-low {
-  background-color: #4ecdc4;
-  color: #1a1a2e;
-}
-
-.complexity-medium {
-  background-color: #ffbe0b;
-  color: #1a1a2e;
-}
-
-.complexity-high {
-  background-color: #ff6b6b;
-  color: #fff;
-}
-
-/* Element background colors based on complexity */
-.element.complexity-low {
-  border-left: 4px solid #4ecdc4;
-}
-
-.element.complexity-medium {
-  border-left: 4px solid #ffbe0b;
-}
-
-.element.complexity-high {
-  border-left: 4px solid #ff6b6b;
-}
-
-/* Result styling */
-.result-element {
-  padding: 15px;
-  margin-bottom: 15px;
-  cursor: default;
-}
-
-.new-element {
-  color: #4ecdc4;
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-.already-discovered {
-  color: #ffbe0b;
-  font-style: italic;
-  margin-top: 10px;
-}
-
-.category {
-  color: #bbb;
-  font-size: 14px;
-  margin: 8px 0;
-  text-transform: capitalize;
 } 
