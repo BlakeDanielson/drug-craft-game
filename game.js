@@ -1,55 +1,70 @@
+// Initial elements - basic drug components as building blocks
+const initialElements = [
+  { id: 'water', name: 'Water', icon: '💧', category: 'element' },
+  { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
+  { id: 'air', name: 'Air', icon: '💨', category: 'element' },
+  { id: 'earth', name: 'Earth', icon: '🌍', category: 'element' }
+];
+
+// Cache for storing previously generated combinations
+let combinationCache = {};
+
+// Track discovered elements
+let discoveredElements = [...initialElements];
+
+// App settings with default values
+let appSettings = {
+  useApi: true,  // Always true as we're removing fallbacks
+  apiStatus: 'unknown'
+};
+
+// DOM elements
+let elementsList, combinationZone, firstElement, secondElement, resultZone, resetButton, searchBar, categoriesContainer;
+
+// Settings panel elements
+let settingsPanel, settingsToggle, closeButton, testApiButton, apiStatus, apiMessage;
+
+// Selected elements for combination
+let selectedElements = [];
+
+// Active category filter
+let activeCategory = 'all';
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded - initializing game');
+  console.log('Initial elements:', initialElements);
   
-  // Initial elements - basic drug components as building blocks
-  const initialElements = [
-    { id: 'water', name: 'Water', icon: '💧', category: 'element' },
-    { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
-    { id: 'air', name: 'Air', icon: '💨', category: 'element' },
-    { id: 'earth', name: 'Earth', icon: '🌍', category: 'element' }
-  ];
-  
-  // Cache for storing previously generated combinations
-  let combinationCache = {};
-  
-  // Track discovered elements
-  let discoveredElements = [...initialElements];
-  
-  // App settings with default values
-  let appSettings = {
-    useApi: true,  // Always true as we're removing fallbacks
-    apiStatus: 'unknown'
-  };
-  
-  // DOM elements
-  const elementsList = document.getElementById('elements-list');
-  const combinationZone = document.getElementById('combination-zone');
-  const firstElement = document.getElementById('first-element');
-  const secondElement = document.getElementById('second-element');
-  const resultZone = document.getElementById('result-zone');
-  const resetButton = document.getElementById('reset-button');
-  const searchBar = document.getElementById('search-bar');
-  const categoriesContainer = document.getElementById('categories');
+  // Initialize DOM element references
+  elementsList = document.getElementById('elements-list');
+  combinationZone = document.getElementById('combination-zone');
+  firstElement = document.getElementById('first-element');
+  secondElement = document.getElementById('second-element');
+  resultZone = document.getElementById('result-zone');
+  resetButton = document.getElementById('reset-button');
+  searchBar = document.getElementById('search-bar');
+  categoriesContainer = document.getElementById('categories');
   
   // Settings panel elements
-  const settingsPanel = document.getElementById('settings-panel');
-  const settingsToggle = document.getElementById('toggle-settings');
-  const closeButton = document.getElementById('close-settings');
-  const testApiButton = document.getElementById('test-api-button');
-  const apiStatus = document.getElementById('api-status');
-  const apiMessage = document.getElementById('api-message');
+  settingsPanel = document.getElementById('settings-panel');
+  settingsToggle = document.getElementById('toggle-settings');
+  closeButton = document.getElementById('close-settings');
+  testApiButton = document.getElementById('test-api-button');
+  apiStatus = document.getElementById('api-status');
+  apiMessage = document.getElementById('api-message');
   
-  // Selected elements for combination
-  let selectedElements = [];
+  // Reset selected elements
+  selectedElements = [];
   
-  // Active category filter
-  let activeCategory = 'all';
+  // Reset categories
+  activeCategory = 'all';
   
   // Make sure elements are loaded
   loadFromLocalStorage();
+  console.log('After loadFromLocalStorage, discovered elements:', discoveredElements.length);
   
   // Ensure basic elements exist
   ensureBasicElements();
+  console.log('After ensureBasicElements, discovered elements:', discoveredElements.length);
   
   // Initialize the game elements
   renderCategories();
@@ -66,8 +81,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Ensure the basic elements are always available
 function ensureBasicElements() {
+  console.log('Ensuring basic elements exist');
+  
   // Make sure each initial element exists in discoveredElements
   initialElements.forEach(initialElement => {
+    console.log('Checking element:', initialElement.name);
     const elementExists = discoveredElements.some(element => element.id === initialElement.id);
     if (!elementExists) {
       console.log('Adding missing basic element:', initialElement.name);
@@ -77,6 +95,8 @@ function ensureBasicElements() {
   
   // Save to ensure persistence
   saveToLocalStorage();
+  
+  console.log('Basic elements check complete');
 }
 
 // Load data from localStorage
@@ -384,6 +404,13 @@ function renderCategories() {
 // Render the elements list
 function renderElements(searchTerm = '') {
   console.log('Rendering elements with search term:', searchTerm);
+  console.log('Total discovered elements:', discoveredElements.length);
+  console.log('Discovered elements:', JSON.stringify(discoveredElements));
+  
+  if (!elementsList) {
+    console.error('Elements list DOM element not found');
+    return;
+  }
   
   // Clear the current list
   elementsList.innerHTML = '';
@@ -634,7 +661,6 @@ async function processCombination() {
 function handleCombinationResult(result) {
   console.log('Handling combination result:', result);
   
-  const resultZone = document.getElementById('result-zone');
   resultZone.innerHTML = '';
   
   if (!result || typeof result !== 'object') {
@@ -670,6 +696,7 @@ function handleCombinationResult(result) {
   
   // Add to discovered elements if it's new
   if (isNewDiscovery) {
+    console.log('New element discovered:', newElement);
     discoveredElements.push(newElement);
     saveToLocalStorage();
     renderCategories();
