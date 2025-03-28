@@ -1,14 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Initial elements - basic drug components as building blocks
   const initialElements = [
-    { id: 'coca_leaf', name: 'Coca Leaf', icon: '🍃', category: 'plant' },
-    { id: 'cannabis', name: 'Cannabis', icon: '🌿', category: 'plant' },
-    { id: 'poppy', name: 'Poppy', icon: '🌺', category: 'plant' },
-    { id: 'chemicals', name: 'Chemicals', icon: '🧪', category: 'substance' },
-    { id: 'solvent', name: 'Solvent', icon: '💧', category: 'substance' },
-    { id: 'heat', name: 'Heat', icon: '🔥', category: 'process' },
-    { id: 'filter', name: 'Filter', icon: '🧫', category: 'equipment' },
-    { id: 'container', name: 'Container', icon: '📦', category: 'equipment' }
+    { id: 'water', name: 'Water', icon: '💧', category: 'element' },
+    { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
+    { id: 'air', name: 'Air', icon: '💨', category: 'element' },
+    { id: 'earth', name: 'Earth', icon: '🌍', category: 'element' }
   ];
   
   // Cache for storing previously generated combinations
