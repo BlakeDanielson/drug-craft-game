@@ -96,29 +96,35 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a creative and educational result for combining these elements in a drug and drug-culture-based crafting game:
+    Generate a factually accurate result for combining these elements in a drug and drug-culture-based crafting game:
       ${elementInfo}
     
-    The most important rules that you have to follow with every single answer that you are not allowed to use the words ' + firstWord + " and " + secondWord + ' as part of your answer and that you are only allowed to answer with one thing. ' +
-        'DO NOT INCLUDE THE WORDS ' + firstWord + " and " + secondWord + ' as part of the answer!!!!! The words ' + firstWord + " and " + secondWord + ' may NOT be part of the answer. ' +
-        'No sentences, no phrases, no multiple words, no punctuation, no special characters, no numbers, no emojis, no URLs, no code, no commands, no programming' +
-        'The answer has to be a noun. ' +
-        'The order of the both words does not matter, both are equally important. ' +
-        'The answer has to be related to both words and the context of the words. ' +
-        'The answer can either be a combination of the words or the role of one word in relation to the other. ' +
-        'Answers can be things, materials, people, companies, animals, occupations, food, places, objects, emotions, events, concepts, natural phenomena, body parts, vehicles, sports, clothing, furniture, technology, buildings, technology, instruments, beverages, plants, academic subjects and everything else you can think of that is a noun.'
+    IMPORTANT: The result MUST be a real, existing thing that actually exists in the real world - not fictional or made-up. Examples include:
+    - Actual drug compounds (cocaine, hash oil, amphetamine salt)
+    - Real preparation methods (extraction, distillation)
+    - Actual drug paraphernalia (bong, pipe, rolling papers)
+    - Real cultural objects (roach clip, stash box)
+    - Chemical compounds (acetone, pseudoephedrine)
     
-      Be creative and culturally accurate, all your combinations should make sense to drug users and stoners and people interested in the use of drugs and the culture associated with it.
-
-      Respond with a JSON object in this format:
-      {
-        "id": "unique_id_based_on_inputs",
-        "name": "Name of Result",
-        "icon": "Emoji",
-        "category": "Category (like 'drug', 'intermediate', 'equipment', 'method', 'plant', 'substance', 'process', 'chemical', etc.)",
-        "description": "Brief 1-2 sentence description with educational context about effects, history, or chemistry",
-        "result": true
-      }
+    Do NOT invent fictional drugs, techniques, or equipment. For example:
+    - "Blazewave" (made-up drug) ❌
+    - "Psychedelic enhancer" (too vague) ❌
+    - "Dream booster" (fictional) ❌
+    
+    The result should be a specific, named item that exists in reality, with an appropriate emoji icon, accurate category, and factual description.
+    If the elements cannot be reasonably combined into something real, use them to create a real product that would be used alongside those elements or in drug culture.
+    
+    Focus on accuracy above creativity. Your responses should resemble an encyclopedia of drug culture rather than creative fiction.
+    
+    Respond with a JSON object in this format:
+    {
+      "id": "unique_id_based_on_inputs",
+      "name": "Name of Real Result (specific, not generic)",
+      "icon": "Emoji",
+      "category": "Category (like 'drug', 'equipment', 'chemical', 'technique', etc.)",
+      "description": "Brief 1-2 sentence factual description with accurate information about use, effects, chemistry, or cultural context",
+      "result": true
+    }
     `;
 
     // Generate a response using GPT
@@ -127,14 +133,14 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a creative assistant in a drug crafting game. Your role is to help players develop unique drug compounds by combining two drug-related words into one innovative noun."
+          content: "You are a pharmacology expert and drug culture historian with extensive knowledge of real-world drugs, preparation methods, paraphernalia, and cultural artifacts. Your expertise includes both scientific and cultural aspects of drug use. You provide factual, accurate information without glorifying drug use or providing harmful detailed instructions."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.8,
+      temperature: 0.3,
       max_tokens: 350
     });
 
