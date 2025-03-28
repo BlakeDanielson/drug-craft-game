@@ -28,10 +28,10 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { element1, element2, isTest } = req.body;
+    const { elements, isTest } = req.body;
 
-    if (!element1 || !element2) {
-      return res.status(400).json({ error: 'Missing required elements' });
+    if (!elements || !Array.isArray(elements) || elements.length < 2) {
+      return res.status(400).json({ error: 'Need at least two elements to combine' });
     }
 
     // Check for API key
@@ -46,28 +46,34 @@ module.exports = async (req, res) => {
         name: 'API Test',
         icon: '✅',
         category: 'test',
-        description: 'The OpenAI API connection is working correctly.'
+        description: 'The OpenAI API connection is working correctly.',
+        result: true
       });
     }
 
+    // Extract element info for prompt
+    const elementInfo = elements.map(el => 
+      `- ${el.name} (${el.category})`
+    ).join('\n');
+
     // Create a prompt that describes what we want
     const prompt = `
-      Generate a creative and educational result for combining these two elements in a drug-themed crafting game:
-      - Element 1: ${element1.name} (${element1.category})
-      - Element 2: ${element2.name} (${element2.category})
+      Generate a creative and educational result for combining these elements in an alchemy-themed crafting game:
+      ${elementInfo}
       
-      The result should be a substance or drug-related item with a name, appropriate emoji icon, category, and brief description.
-      The result should be logical based on the input elements and have educational value about drug compounds, effects, or production methods.
+      The result should be a new element, substance, or material with a name, appropriate emoji icon, category, and brief description.
+      The result should be logically derived from the input elements and have educational value about how these elements might interact.
       
-      Be creative and scientifically accurate, but don't include harmful instructions. Focus on the pharmacology and social context.
+      Be creative but logical, focusing on natural phenomena or interesting combinations. Think of classical element combinations.
       
       Respond with a JSON object in this format:
       {
         "id": "unique_id_based_on_inputs",
         "name": "Name of Result",
         "icon": "Emoji",
-        "category": "Category (one word like 'stimulant', 'opioid', 'equipment', 'process', etc.)",
-        "description": "Brief 1-2 sentence description with educational context"
+        "category": "Category (like 'element', 'material', 'phenomenon', 'energy', etc.)",
+        "description": "Brief 1-2 sentence description with educational context",
+        "result": true
       }
     `;
 
@@ -77,7 +83,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an educational assistant helping to create content for a game that teaches about drugs, their effects, and social policies. Provide accurate, educational information without glorifying drug use."
+          content: "You are an educational assistant helping to create content for an alchemy-themed crafting game that teaches about elemental combinations. Provide interesting, creative, and logical combinations of basic elements."
         },
         {
           role: "user",
@@ -100,14 +106,18 @@ module.exports = async (req, res) => {
     const result = JSON.parse(jsonMatch[0]);
     
     // Validate the result has the required fields
-    if (!result.name || !result.icon || !result.category) {
+    if (!result.name || !result.icon || !result.category || !result.description) {
       throw new Error('Generated result is missing required fields');
     }
     
     // Set a unique ID if not provided
     if (!result.id) {
-      result.id = `${element1.id}_${element2.id}_${Date.now().toString(36)}`;
+      const elementIds = elements.map(el => el.id).sort().join('_');
+      result.id = `${elementIds}_${Date.now().toString(36)}`;
     }
+
+    // Make sure result flag is set
+    result.result = true;
 
     return res.status(200).json(result);
   } catch (error) {

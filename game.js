@@ -1,14 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Initial elements - the "building blocks" of our drug craft system with more specific raw materials
+  // Initial elements - basic elements that users can build upon
   const initialElements = [
-    { id: 'coca_leaf', name: 'Coca Leaf', icon: '🍃', category: 'natural' },
-    { id: 'cannabis_seed', name: 'Cannabis Seed', icon: '🌱', category: 'natural' },
-    { id: 'ethanol', name: 'Ethanol', icon: '🧪', category: 'chemical' },
-    { id: 'sulfuric_acid', name: 'Sulfuric Acid', icon: '⚗️', category: 'chemical' },
-    { id: 'heat', name: 'Heat', icon: '🔥', category: 'method' },
-    { id: 'filtration', name: 'Filtration', icon: '🧫', category: 'method' },
-    { id: 'container', name: 'Container', icon: '📦', category: 'equipment' },
-    { id: 'pipe', name: 'Pipe', icon: '🚬', category: 'equipment' }
+    { id: 'air', name: 'Air', icon: '💨', category: 'element' },
+    { id: 'water', name: 'Water', icon: '💧', category: 'element' },
+    { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
+    { id: 'earth', name: 'Earth', icon: '🌍', category: 'element' }
   ];
   
   // Cache for storing previously generated combinations
