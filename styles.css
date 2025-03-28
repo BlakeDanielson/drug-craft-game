@@ -435,21 +435,45 @@ input:checked + .slider:before {
 
 /* API Info Section */
 .api-info {
-  margin-top: 20px;
-  border-top: 1px solid #3a415a;
-  padding-top: 15px;
+  margin-top: 15px;
+  border: 1px solid #3d4156;
+  padding: 10px;
+  border-radius: 4px;
 }
 
 .api-info p {
-  font-size: 13px;
-  color: #bbb;
   margin: 5px 0;
-  line-height: 1.5;
+  font-size: 14px;
 }
 
 .api-info code {
-  background-color: #1a1a2e;
+  background-color: #3d4156;
   padding: 2px 4px;
   border-radius: 3px;
   font-family: monospace;
+}
+
+.ai-test-response {
+  margin-top: 10px;
+  background-color: #343855;
+  padding: 10px;
+  border-radius: 5px;
+  border-left: 3px solid #4ecdc4;
+}
+
+.ai-test-response p {
+  margin: 5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ai-test-response p:first-child {
+  color: #4ecdc4;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-weight: bold;
 } 

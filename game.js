@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const closeButton = document.getElementById('close-settings');
   const testApiButton = document.getElementById('test-api-button');
   const apiStatus = document.getElementById('api-status');
+  const apiMessage = document.getElementById('api-message');
   
   // Selected elements for combination
   let selectedElements = [];
@@ -146,16 +147,20 @@ document.addEventListener('DOMContentLoaded', function() {
   // Test the API connection
   async function testApiConnection() {
     const apiStatusElement = document.getElementById('api-status');
+    const apiMessage = document.getElementById('api-message');
+    
     apiStatusElement.textContent = 'Testing...';
     apiStatusElement.className = 'status testing';
     
-    const apiEndpoint = determineApiEndpoint();
-    const url = `${apiEndpoint}/generate-combination`;
+    // Update the message to indicate testing is in progress
+    apiMessage.innerHTML = '<p>Testing OpenAI API connection...</p>';
     
-    console.log('Testing API connection to:', url);
+    const apiUrl = determineApiEndpoint();
+    
+    console.log('Testing API connection to:', apiUrl);
     
     try {
-      const response = await fetch(url, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,29 +177,53 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await response.json();
         console.log('API test response data:', data);
         
+        // Update API status
+        appSettings.apiStatus = 'available';
+        saveToLocalStorage();
+        
         apiStatusElement.textContent = 'Connected';
         apiStatusElement.className = 'status connected';
         
-        document.getElementById('api-message').textContent = 
-          'OpenAI API is available. New combinations will be generated using AI.';
+        // Show the AI's response to "hello, who are you"
+        apiMessage.innerHTML = `
+          <p>OpenAI API is working! New combinations will be generated using AI.</p>
+          <div class="ai-test-response">
+            <p><strong>AI Test Response:</strong></p>
+            <p>${data.aiResponse || 'No response'}</p>
+          </div>
+        `;
       } else {
-        const errorText = await response.text();
-        console.error('API test failed with response:', errorText);
+        const errorData = await response.json();
+        console.error('API test failed with response:', errorData);
+        
+        // Update API status
+        appSettings.apiStatus = 'unavailable';
+        saveToLocalStorage();
         
         apiStatusElement.textContent = 'Error';
         apiStatusElement.className = 'status error';
         
-        document.getElementById('api-message').textContent = 
-          'Could not connect to OpenAI API. Please check your API key and try again.';
+        apiMessage.innerHTML = `
+          <p>Could not connect to OpenAI API.</p>
+          <p class="error-message">${errorData.message || 'Unknown error'}</p>
+          <p>${errorData.details || 'Please check your API key and try again.'}</p>
+        `;
       }
     } catch (error) {
       console.error('API test error:', error);
       
+      // Update API status
+      appSettings.apiStatus = 'unavailable';
+      saveToLocalStorage();
+      
       apiStatusElement.textContent = 'Disconnected';
       apiStatusElement.className = 'status disconnected';
       
-      document.getElementById('api-message').textContent = 
-        'Could not reach the API server. Please check your internet connection.';
+      apiMessage.innerHTML = `
+        <p>Could not reach the API server.</p>
+        <p class="error-message">${error.message}</p>
+        <p>Please check your internet connection and server status.</p>
+      `;
     }
   }
   
@@ -250,26 +279,29 @@ document.addEventListener('DOMContentLoaded', function() {
   // Determine the API endpoint based on environment
   function determineApiEndpoint() {
     const hostname = window.location.hostname;
+    let basePath = '';
     
     // For Vercel deployments
     if (hostname.includes('vercel.app') || hostname.includes('.app') || hostname.includes('.com')) {
-      return '/api';
+      basePath = '/api';
     }
-    
     // For localhost development (assuming port 3000 for API server)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    else if (hostname === 'localhost' || hostname === '127.0.0.1') {
       // Check if we're running on the default serve port (3000) or using a static file server
       const port = window.location.port;
       if (port === '3000') {
-        return '/api'; // Next.js API routes
+        basePath = '/api'; // Next.js API routes
       } else {
         // When using a static file server like 'npx serve', we need to point to the API server
-        return 'http://localhost:3000/api';
+        basePath = 'http://localhost:3000/api';
       }
     }
-    
     // For GitHub Pages or other static hosting
-    return '/api'; // Fallback to relative path
+    else {
+      basePath = '/api'; // Fallback to relative path
+    }
+    
+    return `${basePath}/generate-combination`;
   }
   
   // Render category filters
@@ -497,7 +529,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Generate a combination using AI
   async function generateCombination(elements) {
     // Check if we have a cached result
-    const key = elements.sort().join('+');
+    const elementIds = elements.map(el => el.id).sort();
+    const key = elementIds.join('+');
     if (combinationCache[key]) {
       console.log('Using cached combination for:', key);
       return combinationCache[key];
@@ -505,18 +538,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Generating combination for elements:', elements);
     
-    const apiEndpoint = determineApiEndpoint();
-    const url = `${apiEndpoint}/generate-combination`;
+    const apiUrl = determineApiEndpoint();
     
     try {
-      console.log('Sending API request to:', url);
+      console.log('Sending API request to:', apiUrl);
       
-      const response = await fetch(url, {
+      // Extract just the necessary information for each element
+      const elementData = elements.map(el => ({
+        id: el.id,
+        name: el.name,
+        category: el.category
+      }));
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ elements }),
+        body: JSON.stringify({ 
+          elements: elementData,
+          isTest: false
+        }),
       });
       
       console.log('API response status:', response.status);
@@ -524,6 +566,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API error:', errorText);
+        
+        // Update API status
+        appSettings.apiStatus = 'unavailable';
+        saveSettings();
+        
         throw new Error(`API error: ${response.status} ${errorText}`);
       }
 
@@ -536,6 +583,10 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error('Invalid response from API');
       }
 
+      // Update API status to available since request succeeded
+      appSettings.apiStatus = 'available';
+      saveSettings();
+      
       // Cache the result
       combinationCache[key] = result;
       saveToLocalStorage();

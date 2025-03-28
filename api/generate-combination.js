@@ -28,6 +28,8 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('API request received:', req.body);
+    
     const { elements, isTest } = req.body;
 
     if (!elements || !Array.isArray(elements) || elements.length < 2) {
@@ -39,22 +41,58 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    // If this is just a test request, return a simple response
+    // If this is just a test request, send a simple request to OpenAI to verify the API key
     if (isTest) {
-      return res.status(200).json({
-        id: 'test_successful',
-        name: 'API Test',
-        icon: '✅',
-        category: 'test',
-        description: 'The OpenAI API connection is working correctly.',
-        result: true
-      });
+      console.log('Handling test request - verifying OpenAI API key');
+      
+      try {
+        // Send a simple request to OpenAI to verify the API key works
+        const testResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "user",
+              content: "hello, who are you"
+            }
+          ],
+          max_tokens: 50
+        });
+        
+        // If we get here, the API key is valid
+        console.log('OpenAI API key is valid:', testResponse.choices[0].message);
+        return res.status(200).json({
+          id: 'test_successful',
+          name: 'API Test',
+          icon: '✅',
+          category: 'test',
+          description: 'The OpenAI API connection is working correctly.',
+          result: true,
+          aiResponse: testResponse.choices[0].message.content
+        });
+      } catch (error) {
+        // If there's an error, the API key is likely invalid
+        console.error('OpenAI API key validation failed:', error);
+        return res.status(500).json({
+          error: 'OpenAI API key validation failed',
+          message: error.message,
+          details: 'Your API key might be invalid or has exceeded its rate limit'
+        });
+      }
     }
 
     // Extract element info for prompt
-    const elementInfo = elements.map(el => 
-      `- ${el.name} (${el.category})`
-    ).join('\n');
+    const elementInfo = elements.map(el => {
+      // Handle both string elements and object elements
+      if (typeof el === 'string') {
+        return `- ${el}`;
+      } else if (el && el.name) {
+        return `- ${el.name} (${el.category || 'unknown'})`;
+      } else {
+        return `- Unknown element`;
+      }
+    }).join('\n');
+
+    console.log('Processing elements:', elementInfo);
 
     // Create a prompt that describes what we want
     const prompt = `
@@ -96,6 +134,7 @@ module.exports = async (req, res) => {
 
     // Parse the response
     const textResponse = response.choices[0].message.content.trim();
+    console.log('Raw API response:', textResponse);
     
     // Try to extract a valid JSON object
     let jsonMatch = textResponse.match(/\{[\s\S]*\}/);
@@ -112,16 +151,17 @@ module.exports = async (req, res) => {
     
     // Set a unique ID if not provided
     if (!result.id) {
-      const elementIds = elements.map(el => el.id).sort().join('_');
+      const elementIds = elements.map(el => typeof el === 'string' ? el : el.id || '').filter(Boolean).sort().join('_');
       result.id = `${elementIds}_${Date.now().toString(36)}`;
     }
 
     // Make sure result flag is set
     result.result = true;
 
+    console.log('Sending combination result:', result);
     return res.status(200).json(result);
   } catch (error) {
     console.error('Error generating combination:', error);
-    return res.status(500).json({ error: 'Failed to generate combination' });
+    return res.status(500).json({ error: 'Failed to generate combination', message: error.message });
   }
 }; 
