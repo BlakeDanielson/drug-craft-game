@@ -103,6 +103,7 @@ module.exports = async (req, res) => {
       The result should be logically derived from the input elements, but don't be afraid to make creative connections and have fun with it. It is a game after all.
       
       Be creative and culturally accurate, all your combinations should make sense to either scientists with a deep understanding of drug pharmacology, or to drug users and stoners and people interested in the use of drugs and the culture associated with it.
+      Your combinations should be real world things that actually exist until the elements you receive cannot realistically be combined into a real object that can be justified based on the elements you received.
       
       Respond with a JSON object in this format:
       {
