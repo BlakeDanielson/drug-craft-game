@@ -603,18 +603,31 @@ function handleElementClick(e) {
 
 // Process the combination of selected elements
 async function processCombination() {
+  console.log('Processing combination with selected elements:', selectedElements);
+  
+  if (!selectedElements || selectedElements.length !== 2 || !selectedElements[0] || !selectedElements[1]) {
+    console.error('Invalid selection state:', selectedElements);
+    return;
+  }
+  
   // Sort elements to ensure consistent key regardless of order selected
   const sortedElements = [...selectedElements].sort((a, b) => a.id.localeCompare(b.id));
   const element1 = sortedElements[0];
   const element2 = sortedElements[1];
   
+  console.log(`Combining elements: ${element1.name} (${element1.id}) + ${element2.name} (${element2.id})`);
+  
   // Create a unique key for this combination
   const combinationKey = `${element1.id}+${element2.id}`;
+  console.log('Combination key:', combinationKey);
   
   // Check if we already have this combination in cache
   if (combinationCache[combinationKey]) {
+    console.log('Found in cache, using cached result');
     handleCombinationResult(combinationCache[combinationKey]);
   } else {
+    console.log('Not in cache, generating new combination');
+    
     // API is required - check status first
     if (appSettings.apiStatus === 'unavailable') {
       resultZone.innerHTML = `
@@ -635,10 +648,14 @@ async function processCombination() {
     try {
       // Generate combination with AI
       const result = await generateCombination([element1, element2]);
+      console.log('Received API result:', result);
       
-      // Store in cache
-      combinationCache[combinationKey] = result;
-      saveToLocalStorage();
+      // Store in cache - make sure there's no circular reference
+      if (result) {
+        console.log('Storing result in cache with key:', combinationKey);
+        combinationCache[combinationKey] = { ...result };
+        saveToLocalStorage();
+      }
       
       // Process the result
       handleCombinationResult(result);
@@ -664,12 +681,21 @@ function handleCombinationResult(result) {
   resultZone.innerHTML = '';
   
   if (!result || typeof result !== 'object') {
+    console.error('Invalid result type:', typeof result);
     resultZone.innerHTML = '<div class="error">Invalid result received from API</div>';
     return;
   }
   
+  // Check if the result is nested inside a 'result' property (some API responses might format this way)
+  // This addresses potential inconsistencies in API response formatting
+  if (result.result && typeof result.result === 'object' && !result.name) {
+    console.log('Result is nested in result property, extracting...');
+    result = result.result;
+  }
+  
   // Required properties
   if (!result.name || !result.description || !result.category || !result.icon) {
+    console.error('Missing required properties in result:', result);
     resultZone.innerHTML = '<div class="error">Invalid result data: missing required properties</div>';
     return;
   }
@@ -679,10 +705,13 @@ function handleCombinationResult(result) {
   const id = result.id || generateId(name);
   const complexity = result.complexity || 'Medium'; // Default to Medium if not provided
   
+  console.log(`Processing result: ${name} (${id}), complexity: ${complexity}`);
+  
   const resultElement = document.createElement('div');
   resultElement.className = `result-element element complexity-${complexity.toLowerCase()}`;
   
   const isNewDiscovery = !discoveredElements.some(elem => elem.id === id || elem.name === name);
+  console.log(`Is new discovery: ${isNewDiscovery}`);
   
   // Create the full element object
   const newElement = {
@@ -696,7 +725,7 @@ function handleCombinationResult(result) {
   
   // Add to discovered elements if it's new
   if (isNewDiscovery) {
-    console.log('New element discovered:', newElement);
+    console.log('Adding new element to discovered elements:', newElement);
     discoveredElements.push(newElement);
     saveToLocalStorage();
     renderCategories();
@@ -726,8 +755,8 @@ function handleCombinationResult(result) {
   
   resultZone.appendChild(resultElement);
   
-  // Reset combination zone
-  resetCombinationZone();
+  // Reset combination zone after a delay to give user time to see the result
+  setTimeout(resetCombinationZone, 3000);
 }
 
 // Generate a combination using AI
@@ -801,10 +830,10 @@ async function generateCombination(elements) {
     const result = await response.json();
     console.log('API response data:', result);
     
-    // Validate the result
-    if (!result || !result.result || !result.name || !result.description || !result.category) {
+    // Validate the result - only check for essential properties
+    if (!result || !result.name || !result.description || !result.category || !result.icon) {
       console.error('Invalid API response format:', result);
-      throw new Error('Invalid response from API');
+      throw new Error('Invalid response from API - missing essential properties');
     }
 
     // Update API status to available since request succeeded
@@ -824,21 +853,70 @@ async function generateCombination(elements) {
 
 // Reset the combination zone
 function resetCombinationZone() {
-  firstElement.innerHTML = '';
-  secondElement.innerHTML = '';
-  firstElement.classList.add('placeholder');
-  secondElement.classList.add('placeholder');
+  console.log('Resetting combination zone');
+  
+  // Clear the dropzones
+  if (firstElement) {
+    firstElement.innerHTML = '';
+    firstElement.classList.add('placeholder');
+  }
+  
+  if (secondElement) {
+    secondElement.innerHTML = '';
+    secondElement.classList.add('placeholder');
+  }
+  
+  // Reset selected elements array
   selectedElements = [];
-  resultZone.innerHTML = '<p>Combine elements to see the result</p>';
+  
+  // Reset result zone with default message
+  if (resultZone) {
+    resultZone.innerHTML = '<p>Combine elements to see the result</p>';
+  }
+  
+  console.log('Combination zone reset complete');
 }
 
 // Save current state to localStorage
 function saveToLocalStorage() {
   try {
-    localStorage.setItem('drugCraftElements', JSON.stringify(discoveredElements));
-    localStorage.setItem('drugCraftCombinations', JSON.stringify(combinationCache));
+    console.log(`Saving discovered elements (${discoveredElements.length} items)`);
+    
+    // First try to save the elements
+    try {
+      const elementsJSON = JSON.stringify(discoveredElements);
+      localStorage.setItem('drugCraftElements', elementsJSON);
+      console.log(`Saved elements to localStorage (${elementsJSON.length} bytes)`);
+    } catch (elemError) {
+      console.error('Error saving elements to localStorage:', elemError);
+      
+      if (elemError.name === 'QuotaExceededError' || elemError.message.includes('quota')) {
+        // If we hit storage quota, try to save just the basic elements at minimum
+        console.warn('Storage quota exceeded, saving only basic elements');
+        localStorage.setItem('drugCraftElements', JSON.stringify(initialElements));
+      }
+    }
+    
+    // Then try to save the combinations separately
+    try {
+      const combinationsJSON = JSON.stringify(combinationCache);
+      localStorage.setItem('drugCraftCombinations', combinationsJSON);
+      console.log(`Saved combinations to localStorage (${combinationsJSON.length} bytes)`);
+    } catch (comboError) {
+      console.error('Error saving combinations to localStorage:', comboError);
+      
+      if (comboError.name === 'QuotaExceededError' || comboError.message.includes('quota')) {
+        // If we can't save the combinations, clear the cache to start fresh
+        console.warn('Storage quota exceeded for combinations, clearing cache');
+        combinationCache = {};
+        localStorage.setItem('drugCraftCombinations', '{}');
+      }
+    }
+    
+    // Save settings too
+    localStorage.setItem('drugCraftSettings', JSON.stringify(appSettings));
   } catch (e) {
-    console.error('Error saving to localStorage:', e);
+    console.error('Error in saveToLocalStorage:', e);
   }
 }
 
