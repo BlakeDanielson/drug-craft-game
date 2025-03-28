@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Settings panel elements
   const settingsPanel = document.getElementById('settings-panel');
   const settingsToggle = document.getElementById('toggle-settings');
-  const useApiToggle = document.getElementById('use-api');
+  const closeButton = document.getElementById('close-settings');
   const testApiButton = document.getElementById('test-api-button');
   const apiStatus = document.getElementById('api-status');
   
@@ -84,21 +84,11 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCategories();
     renderElements();
     
-    // Add event listeners for the settings panel
-    document.querySelector('.settings-toggle').addEventListener('click', () => {
-      const panel = document.querySelector('.settings-panel');
-      panel.style.display = 'block';
-      testApiConnection();
-    });
+    // Set up event listeners for elements
+    setupEventListeners();
     
-    document.querySelector('.close-button').addEventListener('click', () => {
-      document.querySelector('.settings-panel').style.display = 'none';
-    });
-    
-    // Attach event listeners to elements
-    document.querySelectorAll('.element').forEach(element => {
-      element.addEventListener('click', handleElementClick);
-    });
+    // Set up settings panel functionality
+    initializeSettings();
     
     // Initialize the game area
     updateCombinationArea();
@@ -108,20 +98,20 @@ document.addEventListener('DOMContentLoaded', function() {
   function initializeSettings() {
     // Toggle settings panel visibility
     settingsToggle.addEventListener('click', function() {
-      settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+      settingsPanel.style.display = 'block';
+      // Test API automatically when opening settings
+      testApiConnection();
     });
     
-    // Initialize with settings panel hidden on mobile
-    if (window.innerWidth <= 768) {
+    // Close settings panel
+    closeButton.addEventListener('click', function() {
       settingsPanel.style.display = 'none';
-    }
-    
-    // Set up API toggle - always checked and disabled since we're always using the API
-    useApiToggle.checked = true;
-    useApiToggle.disabled = true;
+    });
     
     // Set up test API button
-    testApiButton.addEventListener('click', testApiConnection);
+    testApiButton.addEventListener('click', function() {
+      testApiConnection();
+    });
   }
   
   // Test the API connection
@@ -304,12 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup event listeners
   function setupEventListeners() {
-    // Element selection
-    elementsList.addEventListener('click', function(e) {
-      const elementDiv = e.target.closest('.element');
-      if (!elementDiv) return;
-      
-      selectElement(elementDiv);
+    // Element selection - attach to all elements
+    document.querySelectorAll('.element').forEach(element => {
+      element.addEventListener('click', handleElementClick);
     });
     
     // Reset button
@@ -346,10 +333,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Select an element for combination
-  function selectElement(elementDiv) {
+  // Handle element click
+  function handleElementClick(e) {
+    const elementDiv = e.target.closest('.element');
+    if (!elementDiv) return;
+    
     const elementId = elementDiv.dataset.id;
     const element = discoveredElements.find(e => e.id === elementId);
+    
+    if (!element) return;
     
     if (selectedElements.length < 2) {
       selectedElements.push(element);
@@ -524,6 +516,14 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {
       console.error('Error saving to localStorage:', e);
     }
+  }
+  
+  // Update the combination area to its initial state
+  function updateCombinationArea() {
+    // Reset the combination zone
+    resetCombinationZone();
+    // Make sure the result zone shows the default message
+    resultZone.innerHTML = '<p>Combine elements to see the result</p>';
   }
   
   // Initialize the game
