@@ -13,15 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
   let combinationCache = {
     // Predefined combinations
     'earth+water': { id: 'soil', name: 'Soil', icon: '🌱', category: 'natural', description: 'Soil is the result of the earth and water combined.' },
-    'fire+air': { id: 'smoke', name: 'Smoke', icon: '💨', category: 'element', description: 'Smoke produced from burning materials.' },
-    'water+air': { id: 'mist', name: 'Mist', icon: '🌫️', category: 'element', description: 'Fine water droplets suspended in air.' },
+    'air+fire': { id: 'smoke', name: 'Smoke', icon: '💨', category: 'element', description: 'Smoke produced from burning materials.' },
+    'air+water': { id: 'mist', name: 'Mist', icon: '🌫️', category: 'element', description: 'Fine water droplets suspended in air.' },
     'earth+fire': { id: 'ash', name: 'Ash', icon: '⚫', category: 'element', description: 'Residue left after burning.' },
-    'leaf+fire': { id: 'joint', name: 'Joint', icon: '🚬', category: 'equipment', description: 'A rolled paper containing dried plant material.' },
-    'seed+earth': { id: 'cultivation', name: 'Cultivation', icon: '🌾', category: 'process', description: 'The process of growing and tending to plants.' },
-    'water+fire': { id: 'steam', name: 'Steam', icon: '💨', category: 'element', description: 'Water vapor produced by boiling water.' },
-    'steam+leaf': { id: 'vaporizer', name: 'Vaporizer', icon: '💨', category: 'equipment', description: 'A device that converts substances into vapor.' },
+    'fire+leaf': { id: 'joint', name: 'Joint', icon: '🚬', category: 'equipment', description: 'A rolled paper containing dried plant material.' },
+    'earth+seed': { id: 'cultivation', name: 'Cultivation', icon: '🌾', category: 'process', description: 'The process of growing and tending to plants.' },
+    'fire+water': { id: 'steam', name: 'Steam', icon: '💨', category: 'element', description: 'Water vapor produced by boiling water.' },
+    'leaf+steam': { id: 'vaporizer', name: 'Vaporizer', icon: '💨', category: 'equipment', description: 'A device that converts substances into vapor.' },
     'leaf+water': { id: 'tea', name: 'Tea', icon: '🍵', category: 'beverage', description: 'An infusion of plant material in hot water.' },
-    'seed+fire': { id: 'roasted_seeds', name: 'Roasted Seeds', icon: '🌰', category: 'food', description: 'Seeds that have been heated until cooked.' }
+    'fire+seed': { id: 'roasted_seeds', name: 'Roasted Seeds', icon: '🌰', category: 'food', description: 'Seeds that have been heated until cooked.' }
   };
   
   // Track discovered elements
@@ -518,49 +518,54 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create a unique key for this combination
     const combinationKey = `${element1.id}+${element2.id}`;
     
+    console.log('Looking up combination:', combinationKey); // Add logging
+    console.log('Available combinations:', Object.keys(combinationCache)); // Add logging
+    
     // Check if we already have this combination in cache
     if (combinationCache[combinationKey]) {
+      console.log('Found cached combination:', combinationCache[combinationKey]); // Add logging
       handleCombinationResult(combinationCache[combinationKey]);
-    } else {
-      // API is required - check status first
-      if (appSettings.apiStatus === 'unavailable') {
-        resultZone.innerHTML = `
-          <div class="element">
-            <span class="element-icon">❌</span> API Unavailable
-          </div>
-          <p class="description">OpenAI API is not available. Please check your API key and connection.</p>
-          <p class="description">This game requires an active OpenAI API to function.</p>
-        `;
-        
-        setTimeout(resetCombinationZone, 4000);
-        return;
-      }
+      return; // Add early return to prevent API call
+    }
+
+    // API is required - check status first
+    if (appSettings.apiStatus === 'unavailable') {
+      resultZone.innerHTML = `
+        <div class="element">
+          <span class="element-icon">❌</span> API Unavailable
+        </div>
+        <p class="description">OpenAI API is not available. Please check your API key and connection.</p>
+        <p class="description">This game requires an active OpenAI API to function.</p>
+      `;
       
-      // Need to generate a new combination via AI
-      resultZone.innerHTML = `<div class="loading"></div> Generating combination...`;
+      setTimeout(resetCombinationZone, 4000);
+      return;
+    }
+    
+    // Need to generate a new combination via AI
+    resultZone.innerHTML = `<div class="loading"></div> Generating combination...`;
+    
+    try {
+      // Generate combination with AI
+      const result = await generateCombination([element1, element2]);
       
-      try {
-        // Generate combination with AI
-        const result = await generateCombination([element1, element2]);
-        
-        // Store in cache
-        combinationCache[combinationKey] = result;
-        saveToLocalStorage();
-        
-        // Process the result
-        handleCombinationResult(result);
-      } catch (error) {
-        resultZone.innerHTML = `
-          <p>Error generating combination: ${error.message}</p>
-          <p>The OpenAI API is required for this game to function.</p>
-        `;
-        console.error('Error generating combination:', error);
-        
-        // Update API status to unavailable
-        updateApiStatus('unavailable');
-        
-        setTimeout(resetCombinationZone, 4000);
-      }
+      // Store in cache
+      combinationCache[combinationKey] = result;
+      saveToLocalStorage();
+      
+      // Process the result
+      handleCombinationResult(result);
+    } catch (error) {
+      resultZone.innerHTML = `
+        <p>Error generating combination: ${error.message}</p>
+        <p>The OpenAI API is required for this game to function.</p>
+      `;
+      console.error('Error generating combination:', error);
+      
+      // Update API status to unavailable
+      updateApiStatus('unavailable');
+      
+      setTimeout(resetCombinationZone, 4000);
     }
   }
   
