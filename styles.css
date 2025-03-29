@@ -125,6 +125,42 @@ header p {
   gap: 15px;
 }
 
+.playground {
+  background-color: #1f2235;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 300px;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow-y: auto;
+}
+
+.playground .element {
+  position: absolute;
+  margin: 0;
+  z-index: 1;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.playground .element:hover {
+  z-index: 2;
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.playground .element.combining {
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); box-shadow: 0 5px 20px rgba(78, 205, 196, 0.8); }
+  100% { transform: scale(1); }
+}
+
 .combination-zone {
   display: flex;
   justify-content: center;
@@ -411,8 +447,9 @@ input:checked + .slider:before {
     width: 100%;
   }
   
-  .combination-zone {
-    padding: 15px;
+  .playground {
+    min-height: 250px;
+    padding: 10px;
   }
   
   .result-zone .description {
@@ -431,11 +468,6 @@ input:checked + .slider:before {
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 300px;
-  }
-  
-  .drop-zone {
-    width: 100px;
-    height: 50px;
   }
 }
 

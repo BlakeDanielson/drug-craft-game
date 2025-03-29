@@ -35,9 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // DOM elements
   const elementsList = document.getElementById('elements-list');
-  const combinationZone = document.getElementById('combination-zone');
-  const firstElement = document.getElementById('first-element');
-  const secondElement = document.getElementById('second-element');
+  const combinationZone = document.getElementById('playground');
   const resultZone = document.getElementById('result-zone');
   const resetButton = document.getElementById('reset-button');
   const searchBar = document.getElementById('search-bar');
@@ -56,6 +54,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Active category filter
   let activeCategory = 'all';
+  
+  // Keep track of elements in the playground
+  let playgroundElements = [];
+  let nextElementId = 1;
   
   // Initialize the game
   function initGame() {
@@ -485,73 +487,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Setup drag and drop functionality
   function setupDragAndDrop() {
-    // Make elements draggable
+    // Make elements in the sidebar draggable
     const makeElementsDraggable = () => {
-      document.querySelectorAll('.element').forEach(element => {
+      document.querySelectorAll('#elements-list .element').forEach(element => {
         element.setAttribute('draggable', 'true');
         
         element.addEventListener('dragstart', function(e) {
           e.dataTransfer.setData('text/plain', this.dataset.id);
-          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('source', 'sidebar');
+          e.dataTransfer.effectAllowed = 'copy';
           this.classList.add('dragging');
         });
         
         element.addEventListener('dragend', function() {
           this.classList.remove('dragging');
         });
-        
-        // Also maintain click functionality for mobile
-        element.addEventListener('click', handleElementClick);
       });
     };
     
-    // Setup drop targets
-    document.addEventListener('dragover', function(e) {
+    // Make playground a valid drop target
+    combinationZone.addEventListener('dragover', function(e) {
       e.preventDefault();
-      const targetElement = e.target.closest('.element');
-      if (targetElement) {
-        e.dataTransfer.dropEffect = 'move';
-        targetElement.classList.add('drop-target');
-      }
+      e.dataTransfer.dropEffect = 'copy';
     });
     
-    document.addEventListener('dragleave', function(e) {
-      const targetElement = e.target.closest('.element');
-      if (targetElement) {
-        targetElement.classList.remove('drop-target');
-      }
-    });
-    
-    document.addEventListener('drop', function(e) {
+    // Handle element drops into the playground
+    combinationZone.addEventListener('drop', function(e) {
       e.preventDefault();
       
-      const targetElement = e.target.closest('.element');
-      if (!targetElement) return;
+      const elementId = e.dataTransfer.getData('text/plain');
+      const source = e.dataTransfer.getData('source');
       
-      targetElement.classList.remove('drop-target');
+      // Get position relative to playground
+      const rect = combinationZone.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       
-      const draggedElementId = e.dataTransfer.getData('text/plain');
-      const draggedElement = discoveredElements.find(element => element.id === draggedElementId);
-      const targetElementId = targetElement.dataset.id;
-      const targetElementObj = discoveredElements.find(element => element.id === targetElementId);
-      
-      if (draggedElement && targetElementObj) {
-        // Clear any current selections
-        selectedElements = [];
-        
-        // Set the two elements as selected
-        selectedElements.push(draggedElement);
-        selectedElements.push(targetElementObj);
-        
-        // Update UI to show selections
-        firstElement.innerHTML = `<div class="element">${draggedElement.icon} ${draggedElement.name}</div>`;
-        firstElement.classList.remove('placeholder');
-        
-        secondElement.innerHTML = `<div class="element">${targetElementObj.icon} ${targetElementObj.name}</div>`;
-        secondElement.classList.remove('placeholder');
-        
-        // Process the combination
-        setTimeout(processCombination, 500);
+      if (source === 'sidebar') {
+        // Create a new element in the playground
+        const originalElement = discoveredElements.find(element => element.id === elementId);
+        if (originalElement) {
+          addElementToPlayground(originalElement, x, y);
+        }
+      } else if (source === 'playground') {
+        // Move an existing playground element
+        const playgroundElement = document.getElementById(elementId);
+        if (playgroundElement) {
+          playgroundElement.style.left = x + 'px';
+          playgroundElement.style.top = y + 'px';
+        }
       }
     });
     
@@ -564,6 +548,93 @@ document.addEventListener('DOMContentLoaded', function() {
       originalRenderElements(searchTerm);
       makeElementsDraggable();
     };
+  }
+  
+  // Add an element to the playground
+  function addElementToPlayground(element, x, y) {
+    const uniqueId = 'playground-element-' + nextElementId++;
+    
+    // Create the element div
+    const elementDiv = document.createElement('div');
+    elementDiv.className = 'element';
+    elementDiv.id = uniqueId;
+    elementDiv.dataset.elementId = element.id;
+    elementDiv.innerHTML = `<span class="element-icon">${element.icon}</span> ${element.name}`;
+    elementDiv.style.position = 'absolute';
+    elementDiv.style.left = (x - 40) + 'px'; // Center the element
+    elementDiv.style.top = (y - 20) + 'px';
+    
+    // Make the playground element draggable
+    elementDiv.setAttribute('draggable', 'true');
+    
+    elementDiv.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('text/plain', this.id);
+      e.dataTransfer.setData('source', 'playground');
+      e.dataTransfer.setData('elementId', this.dataset.elementId);
+      e.dataTransfer.effectAllowed = 'move';
+      this.classList.add('dragging');
+    });
+    
+    elementDiv.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+    });
+    
+    // Handle combining elements when one is dropped on another
+    elementDiv.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      const sourceElementId = e.dataTransfer.getData('elementId');
+      if (sourceElementId && sourceElementId !== this.dataset.elementId) {
+        e.dataTransfer.dropEffect = 'link';
+        this.classList.add('drop-target');
+      }
+    });
+    
+    elementDiv.addEventListener('dragleave', function() {
+      this.classList.remove('drop-target');
+    });
+    
+    elementDiv.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('drop-target');
+      
+      const sourceElementId = e.dataTransfer.getData('elementId');
+      const sourcePlaygroundId = e.dataTransfer.getData('text/plain');
+      const source = e.dataTransfer.getData('source');
+      
+      if (source === 'playground' && sourceElementId && sourceElementId !== this.dataset.elementId) {
+        // Find the two elements
+        const element1 = discoveredElements.find(el => el.id === sourceElementId);
+        const element2 = discoveredElements.find(el => el.id === this.dataset.elementId);
+        
+        if (element1 && element2) {
+          // Add combining animation class
+          this.classList.add('combining');
+          
+          // Clear selections and set the two elements as selected
+          selectedElements = [element1, element2];
+          
+          // Process the combination with a slight delay
+          setTimeout(() => {
+            processCombination();
+            
+            // Remove the source element
+            const sourceElement = document.getElementById(sourcePlaygroundId);
+            if (sourceElement) {
+              sourceElement.remove();
+            }
+            
+            // Remove the combining animation
+            setTimeout(() => {
+              this.classList.remove('combining');
+            }, 500);
+          }, 300);
+        }
+      }
+    });
+    
+    // Add the element to the playground
+    combinationZone.appendChild(elementDiv);
+    playgroundElements.push({ id: uniqueId, elementId: element.id });
   }
   
   // Handle element click - modified to work alongside drag and drop
@@ -679,8 +750,27 @@ document.addEventListener('DOMContentLoaded', function() {
       ${result.description ? `<p class="description">${result.description}</p>` : ''}
     `;
     
-    // Reset the combination zone after a delay
-    setTimeout(resetCombinationZone, 3000);
+    // Add the result to the playground
+    setTimeout(() => {
+      // Calculate average position of combined elements
+      const targetElement = document.querySelector('#playground .combining');
+      if (targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+        const playgroundRect = combinationZone.getBoundingClientRect();
+        const x = (rect.left + rect.width/2) - playgroundRect.left;
+        const y = (rect.top + rect.height/2) - playgroundRect.top;
+        addElementToPlayground(result, x, y);
+      } else {
+        // Fallback to center if no elements found
+        const playgroundRect = combinationZone.getBoundingClientRect();
+        const x = playgroundRect.width / 2;
+        const y = playgroundRect.height / 2;
+        addElementToPlayground(result, x, y);
+      }
+      
+      // Reset selected elements
+      selectedElements = [];
+    }, 1000);
   }
   
   // Generate a combination using AI
@@ -777,12 +867,11 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Reset the combination zone
   function resetCombinationZone() {
-    firstElement.innerHTML = '';
-    secondElement.innerHTML = '';
-    firstElement.classList.add('placeholder');
-    secondElement.classList.add('placeholder');
+    // Clear all elements from the playground
+    playgroundElements = [];
+    combinationZone.innerHTML = '';
     selectedElements = [];
-    resultZone.innerHTML = '<p>Combine elements to see the result</p>';
+    resultZone.innerHTML = '<p>Drag elements to the playground and combine them</p>';
   }
   
   // Save current state to localStorage
@@ -800,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset the combination zone
     resetCombinationZone();
     // Make sure the result zone shows the default message
-    resultZone.innerHTML = '<p>Combine elements to see the result</p>';
+    resultZone.innerHTML = '<p>Drag elements to the playground and combine them</p>';
   }
   
   // Initialize the game
