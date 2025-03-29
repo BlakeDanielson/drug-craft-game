@@ -96,58 +96,27 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a factually accurate result related to illicitdrug production or recreational drug use for combining these elements in a crafting game:
-    produce a result that is the most common and well-known combination of the elements.
-    if there is no obvious combination, make one up, but make it believable.
+    Generate a factually accurate result related to illicitdrug production or recreational drug use for combining these elements in a crafting game.
+    The game follows these rules:
+    1. Each combination must be logical and based on real-world chemistry or drug production methods
+    2. Results should be specific items, not generic categories
+    3. Each result needs a unique ID, name, emoji icon, category, and description
+    4. Categories can be: element, equipment, chemical, object, plant, animal, mineral, artifact, process, beverage, food, etc.
 
-    Examples:
-    Earth + Water = Plant
-    Fire + Air = Smoke
-    Water + Air = Mist
-    Earth + Fire = Ash
-    Leaf + Fire = Joint
-    Seed + Earth = Cultivation
-    Water + Fire = Steam
-    Steam + Leaf = Vaporizer
-    Leaf + Water = Tea
-    Seed + Fire = Roasted Seeds
-    Leaf + Smoke = Pipe
-    Cultivation + Time = Harvest
-    Ash + Water = Lye
-    Fire + Seed = Popped Seed
-    Earth + Leaf = Compost
-    Air + Smoke = Signal
-    Water + Seed = Germination
-    Leaf + Cultivation = Garden
-    Fire + Joint = Ashtray
-    Seed + Time = Growth
-    Water + Tea = Infusion
-    Leaf + Vaporizer = E-Cigarette
-    Cultivation + Harvest = Yield
-    Earth + Ash = Fertilizer
-    Smoke + Air = Cloud
-    Fire + Pipe = Bong
-    Leaf + Tea = Herbal Remedy
-    Seed + Earth + Water = Sprout
-    Air + Fire = Hot Air
-    Leaf + Joint = Blunt
-    Water + Vaporizer = Humidifier
-    Cultivation + Earth = Farm
-    Fire + Ashtray = Ember
-    Seed + Growth = Plant
-    Leaf + Compost = Mulch
-    Smoke + Cloud = Fog
-    Fire + Bong = Hookah
-    Leaf + Herbal Remedy = Medicine
-    Seed + Sprout = Sapling
-    Air + Hot Air = Balloon
-    Leaf + Blunt = Cigar
-    Water + Humidifier = Moisture
-    Cultivation + Farm = Plantation
+    Here are some example combinations to understand the game's style:
+    Earth + Water = Plant (A basic plant grown from seeds and earth)
+    Fire + Air = Smoke (Smoke produced from burning materials)
+    Water + Air = Mist (Fine water droplets suspended in air)
+    Earth + Fire = Ash (Residue left after burning)
+    Leaf + Fire = Joint (A rolled paper containing dried plant material)
+    Seed + Earth = Cultivation (The process of growing and tending to plants)
+    Water + Fire = Steam (Water vapor produced by boiling water)
+    Steam + Leaf = Vaporizer (A device that converts substances into vapor)
+    Leaf + Water = Tea (An infusion of plant material in hot water)
+    Seed + Fire = Roasted Seeds (Seeds that have been heated until cooked)
 
-
-    reference @https://infinite-craft.com/ if needed.
-      ${elementInfo}
+    Now, please generate a result for combining these elements:
+    ${elementInfo}
     
     Respond with a JSON object in this format:
     {
@@ -158,6 +127,13 @@ module.exports = async (req, res) => {
       "description": "Brief 1-2 sentence factual description with accurate information about use, effects, chemistry, or cultural context",
       "result": true
     }
+
+    Make sure the result:
+    1. Is logically consistent with the input elements
+    2. Has a unique and specific name
+    3. Uses an appropriate emoji icon
+    4. Is categorized correctly
+    5. Has a factual description that explains the combination
     `;
 
     // Generate a response using GPT
@@ -166,7 +142,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an illicit drug expert with extensive knowledge of all real world elements and their combinations. You understand how all drugs in the world are made and created."
+          content: "You are an illicit drug expert with extensive knowledge of all real world elements and their combinations. You understand how all drugs in the world are made and created. You create logical, specific combinations that follow real-world chemistry and drug production methods."
         },
         {
           role: "user",
