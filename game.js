@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Initial elements - basic drug components as building blocks
   const initialElements = [
+    { id: 'leaf', name: 'Coca Seeds', icon: '🌿', category: 'natural' },
+    { id: 'seed', name: 'Seed', icon: '🌱', category: 'natural' },
     { id: 'water', name: 'Water', icon: '💧', category: 'element' },
     { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
     { id: 'air', name: 'Air', icon: '💨', category: 'element' },

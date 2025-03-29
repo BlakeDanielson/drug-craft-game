@@ -96,9 +96,55 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a factually accurate result for combining these elements in a crafting game:
+    Generate a factually accurate result related to illicitdrug production or recreational drug use for combining these elements in a crafting game:
     produce a result that is the most common and well-known combination of the elements.
     if there is no obvious combination, make one up, but make it believable.
+
+    Examples:
+    Earth + Water = Plant
+    Fire + Air = Smoke
+    Water + Air = Mist
+    Earth + Fire = Ash
+    Leaf + Fire = Joint
+    Seed + Earth = Cultivation
+    Water + Fire = Steam
+    Steam + Leaf = Vaporizer
+    Leaf + Water = Tea
+    Seed + Fire = Roasted Seeds
+    Leaf + Smoke = Pipe
+    Cultivation + Time = Harvest
+    Ash + Water = Lye
+    Fire + Seed = Popped Seed
+    Earth + Leaf = Compost
+    Air + Smoke = Signal
+    Water + Seed = Germination
+    Leaf + Cultivation = Garden
+    Fire + Joint = Ashtray
+    Seed + Time = Growth
+    Water + Tea = Infusion
+    Leaf + Vaporizer = E-Cigarette
+    Cultivation + Harvest = Yield
+    Earth + Ash = Fertilizer
+    Smoke + Air = Cloud
+    Fire + Pipe = Bong
+    Leaf + Tea = Herbal Remedy
+    Seed + Earth + Water = Sprout
+    Air + Fire = Hot Air
+    Leaf + Joint = Blunt
+    Water + Vaporizer = Humidifier
+    Cultivation + Earth = Farm
+    Fire + Ashtray = Ember
+    Seed + Growth = Plant
+    Leaf + Compost = Mulch
+    Smoke + Cloud = Fog
+    Fire + Bong = Hookah
+    Leaf + Herbal Remedy = Medicine
+    Seed + Sprout = Sapling
+    Air + Hot Air = Balloon
+    Leaf + Blunt = Cigar
+    Water + Humidifier = Moisture
+    Cultivation + Farm = Plantation
+
 
     reference @https://infinite-craft.com/ if needed.
       ${elementInfo}
@@ -120,7 +166,7 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a scientific expert with extensive knowledge of all real world elements and their combinations. You understand how everything in the world is made and created."
+          content: "You are an illicit drug expert with extensive knowledge of all real world elements and their combinations. You understand how all drugs in the world are made and created."
         },
         {
           role: "user",
