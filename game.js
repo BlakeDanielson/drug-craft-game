@@ -565,6 +565,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add combining animation class
             playgroundElement.classList.add('combining');
             
+            // Calculate the midpoint between the two elements for the result
+            const sourceRect = sourceElement.getBoundingClientRect();
+            const targetRect = playgroundElement.getBoundingClientRect();
+            
+            const midX = (sourceRect.left + targetRect.left + sourceRect.width/2 + targetRect.width/2)/2 - rect.left;
+            const midY = (sourceRect.top + targetRect.top + sourceRect.height/2 + targetRect.height/2)/2 - rect.top;
+            
+            // Store the midpoint position for later use
+            playgroundElement.dataset.resultX = midX;
+            playgroundElement.dataset.resultY = midY;
+            
             // Clear selections and set the two elements as selected
             selectedElements = [element1, element2];
             
@@ -572,13 +583,8 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
               processCombination();
               
-              // Remove the source element
+              // Remove the source element (will remove target in handleCombinationResult)
               sourceElement.remove();
-              
-              // Remove the combining animation
-              setTimeout(() => {
-                playgroundElement.classList.remove('combining');
-              }, 500);
             }, 300);
           }
         }
@@ -795,17 +801,23 @@ document.addEventListener('DOMContentLoaded', function() {
       // Calculate position from the combining element
       const targetElement = document.querySelector('#playground .combining');
       if (targetElement) {
-        // Store the position of the target element
-        const rect = targetElement.getBoundingClientRect();
-        const playgroundRect = combinationZone.getBoundingClientRect();
-        
-        const x = (rect.left + rect.width/2) - playgroundRect.left;
-        const y = (rect.top + rect.height/2) - playgroundRect.top;
+        // Get the stored midpoint position or calculate if not available
+        let x, y;
+        if (targetElement.dataset.resultX && targetElement.dataset.resultY) {
+          x = parseFloat(targetElement.dataset.resultX);
+          y = parseFloat(targetElement.dataset.resultY);
+        } else {
+          // Fallback to target element position
+          const rect = targetElement.getBoundingClientRect();
+          const playgroundRect = combinationZone.getBoundingClientRect();
+          x = (rect.left + rect.width/2) - playgroundRect.left;
+          y = (rect.top + rect.height/2) - playgroundRect.top;
+        }
         
         // Remove the combining element
         targetElement.remove();
         
-        // Add the result element at the same position
+        // Add the result element at the calculated position
         addElementToPlayground(result, x, y);
         
         // Flash effect for the new element
