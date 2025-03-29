@@ -96,44 +96,45 @@ module.exports = async (req, res) => {
 
     // Create a prompt that describes what we want
     const prompt = `
-    Generate a factually accurate result related to illicitdrug production or recreational drug use for combining these elements in a crafting game.
-    The game follows these rules:
-    1. Each combination must be logical and based on real-world chemistry or drug production methods
-    2. Results should be specific items, not generic categories
-    3. Each result needs a unique ID, name, emoji icon, category, and description
-    4. Categories can be: element, equipment, chemical, object, plant, animal, mineral, artifact, process, beverage, food, etc.
+    Generate a simple result for combining these elements in a drug-themed crafting game.
+    Focus on basic, fundamental combinations that could lead to more complex ones later.
+    The result should be the most obvious and straightforward combination of the input elements.
 
-    Here are some example combinations to understand the game's style:
-    Earth + Water = Plant (A basic plant grown from seeds and earth)
-    Fire + Air = Smoke (Smoke produced from burning materials)
-    Water + Air = Mist (Fine water droplets suspended in air)
-    Earth + Fire = Ash (Residue left after burning)
-    Leaf + Fire = Joint (A rolled paper containing dried plant material)
-    Seed + Earth = Cultivation (The process of growing and tending to plants)
-    Water + Fire = Steam (Water vapor produced by boiling water)
-    Steam + Leaf = Vaporizer (A device that converts substances into vapor)
-    Leaf + Water = Tea (An infusion of plant material in hot water)
-    Seed + Fire = Roasted Seeds (Seeds that have been heated until cooked)
+    Key rules:
+    1. Keep it extremely simple - prefer basic combinations over complex ones
+    2. Results should build gradually - don't skip steps in the production process
+    3. Focus on direct combinations of just the two input elements
+    4. Avoid complex chemical processes or equipment unless the inputs directly suggest them
 
-    Now, please generate a result for combining these elements:
+    Here are examples of good simple combinations:
+    Earth + Water = Mud (Wet earth, the basic growing medium)
+    Fire + Air = Smoke (The simple result of burning in air)
+    Water + Air = Mist (Water droplets in air)
+    Earth + Fire = Ash (Basic burnt earth)
+    Leaf + Fire = Smoke (Burning plant material)
+    Seed + Earth = Sprout (The beginning of plant growth)
+    Water + Fire = Steam (Heated water)
+    Leaf + Water = Tea (Simple plant infusion)
+
+    Now, please generate a simple result for combining these elements:
     ${elementInfo}
     
     Respond with a JSON object in this format:
     {
       "id": "unique_id_based_on_inputs",
-      "name": "Name of Real Result (specific, not generic)",
-      "icon": "Emoji",
-      "category": "Category (like 'element', 'equipment', 'chemical', 'object', 'plant', 'animal', 'mineral', 'artifact', etc.)",
-      "description": "Brief 1-2 sentence factual description with accurate information about use, effects, chemistry, or cultural context",
+      "name": "Simple Result Name",
+      "icon": "Basic Emoji",
+      "category": "Basic Category (element, plant, object, etc.)",
+      "description": "One simple sentence describing what happens when these elements combine.",
       "result": true
     }
 
-    Make sure the result:
-    1. Is logically consistent with the input elements
-    2. Has a unique and specific name
-    3. Uses an appropriate emoji icon
-    4. Is categorized correctly
-    5. Has a factual description that explains the combination
+    Remember:
+    1. Keep the combination as simple as possible
+    2. Use basic, everyday terms
+    3. Choose a clear, obvious emoji
+    4. Focus on the immediate result of combining just these two elements
+    5. Avoid complex processes or equipment
     `;
 
     // Generate a response using GPT
@@ -142,15 +143,15 @@ module.exports = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an illicit drug expert with extensive knowledge of all real world elements and their combinations. You understand how all drugs in the world are made and created. You create logical, specific combinations that follow real-world chemistry and drug production methods."
+          content: "You are a helpful assistant that creates simple, logical combinations in a drug-themed crafting game. You focus on basic, fundamental combinations that could be used as building blocks for more complex items later."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 350
+      temperature: 0.2, // Reduced temperature for more consistent, simpler outputs
+      max_tokens: 250  // Reduced tokens since we want simpler responses
     });
 
     // Parse the response
