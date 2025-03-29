@@ -34,6 +34,15 @@ header p {
   line-height: 1.5;
 }
 
+.instructions {
+  background-color: #2a2f45;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px !important;
+  border-left: 3px solid #4ecdc4;
+  font-size: 0.9rem;
+}
+
 .game-container {
   display: flex;
   flex-wrap: wrap;
@@ -187,6 +196,14 @@ header p {
 .element.dragging {
   opacity: 0.7;
   cursor: grabbing;
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(78, 205, 196, 0.5);
+}
+
+.element.drop-target {
+  background-color: #4ecdc4;
+  transform: scale(1.1);
+  box-shadow: 0 5px 20px rgba(78, 205, 196, 0.8);
 }
 
 .element-icon {

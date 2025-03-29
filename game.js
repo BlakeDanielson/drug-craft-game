@@ -478,9 +478,95 @@ document.addEventListener('DOMContentLoaded', function() {
       
       renderElements(searchBar.value);
     });
+
+    // Add drag and drop functionality
+    setupDragAndDrop();
+  }
+
+  // Setup drag and drop functionality
+  function setupDragAndDrop() {
+    // Make elements draggable
+    const makeElementsDraggable = () => {
+      document.querySelectorAll('.element').forEach(element => {
+        element.setAttribute('draggable', 'true');
+        
+        element.addEventListener('dragstart', function(e) {
+          e.dataTransfer.setData('text/plain', this.dataset.id);
+          e.dataTransfer.effectAllowed = 'move';
+          this.classList.add('dragging');
+        });
+        
+        element.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+        });
+        
+        // Also maintain click functionality for mobile
+        element.addEventListener('click', handleElementClick);
+      });
+    };
+    
+    // Setup drop targets
+    document.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      const targetElement = e.target.closest('.element');
+      if (targetElement) {
+        e.dataTransfer.dropEffect = 'move';
+        targetElement.classList.add('drop-target');
+      }
+    });
+    
+    document.addEventListener('dragleave', function(e) {
+      const targetElement = e.target.closest('.element');
+      if (targetElement) {
+        targetElement.classList.remove('drop-target');
+      }
+    });
+    
+    document.addEventListener('drop', function(e) {
+      e.preventDefault();
+      
+      const targetElement = e.target.closest('.element');
+      if (!targetElement) return;
+      
+      targetElement.classList.remove('drop-target');
+      
+      const draggedElementId = e.dataTransfer.getData('text/plain');
+      const draggedElement = discoveredElements.find(element => element.id === draggedElementId);
+      const targetElementId = targetElement.dataset.id;
+      const targetElementObj = discoveredElements.find(element => element.id === targetElementId);
+      
+      if (draggedElement && targetElementObj) {
+        // Clear any current selections
+        selectedElements = [];
+        
+        // Set the two elements as selected
+        selectedElements.push(draggedElement);
+        selectedElements.push(targetElementObj);
+        
+        // Update UI to show selections
+        firstElement.innerHTML = `<div class="element">${draggedElement.icon} ${draggedElement.name}</div>`;
+        firstElement.classList.remove('placeholder');
+        
+        secondElement.innerHTML = `<div class="element">${targetElementObj.icon} ${targetElementObj.name}</div>`;
+        secondElement.classList.remove('placeholder');
+        
+        // Process the combination
+        setTimeout(processCombination, 500);
+      }
+    });
+    
+    // Call this when elements are rendered
+    makeElementsDraggable();
+    
+    // Override the renderElements function to make new elements draggable
+    const originalRenderElements = renderElements;
+    renderElements = function(searchTerm = '') {
+      originalRenderElements(searchTerm);
+      makeElementsDraggable();
+    };
   }
   
-  // Handle element click
+  // Handle element click - modified to work alongside drag and drop
   function handleElementClick(e) {
     const elementDiv = e.target.closest('.element');
     if (!elementDiv) return;
