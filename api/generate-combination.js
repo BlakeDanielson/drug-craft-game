@@ -209,4 +209,4 @@ module.exports = async (req, res) => {
     console.error('Error generating combination:', error);
     return res.status(500).json({ error: 'Failed to generate combination', message: error.message });
   }
-}; 
+};
