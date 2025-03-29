@@ -59,6 +59,10 @@ document.addEventListener('DOMContentLoaded', function() {
   let playgroundElements = [];
   let nextElementId = 1;
   
+  // Keep track of the currently dragged element
+  let currentDraggedElement = null;
+  let currentDraggedElementData = null;
+  
   // Initialize the game
   function initGame() {
     console.log('Game initialization started');
@@ -497,10 +501,25 @@ document.addEventListener('DOMContentLoaded', function() {
           e.dataTransfer.setData('source', 'sidebar');
           e.dataTransfer.effectAllowed = 'copy';
           this.classList.add('dragging');
+          
+          // Store reference to current dragged element
+          currentDraggedElement = this;
+          currentDraggedElementData = {
+            id: this.dataset.id,
+            source: 'sidebar'
+          };
         });
         
         element.addEventListener('dragend', function() {
           this.classList.remove('dragging');
+          // Remove drop-target class from all elements
+          document.querySelectorAll('.drop-target').forEach(el => {
+            el.classList.remove('drop-target');
+          });
+          
+          // Reset current dragged element
+          currentDraggedElement = null;
+          currentDraggedElementData = null;
         });
       });
     };
@@ -515,15 +534,55 @@ document.addEventListener('DOMContentLoaded', function() {
     combinationZone.addEventListener('drop', function(e) {
       e.preventDefault();
       
-      const elementId = e.dataTransfer.getData('text/plain');
-      const source = e.dataTransfer.getData('source');
+      if (!currentDraggedElementData) return;
+      
+      const elementId = currentDraggedElementData.id;
+      const source = currentDraggedElementData.source;
       
       // Get position relative to playground
       const rect = combinationZone.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
-      if (source === 'sidebar') {
+      // Check if we dropped onto another element
+      const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+      const playgroundElement = targetElement.closest('#playground .element');
+      
+      if (playgroundElement && source === 'playground') {
+        // We dropped onto another playground element - combine them
+        const sourcePlaygroundId = elementId;
+        const sourceElement = document.getElementById(sourcePlaygroundId);
+        
+        if (sourceElement && sourceElement !== playgroundElement) {
+          // Get element data for both elements
+          const element1Id = sourceElement.dataset.elementId;
+          const element2Id = playgroundElement.dataset.elementId;
+          
+          const element1 = discoveredElements.find(el => el.id === element1Id);
+          const element2 = discoveredElements.find(el => el.id === element2Id);
+          
+          if (element1 && element2) {
+            // Add combining animation class
+            playgroundElement.classList.add('combining');
+            
+            // Clear selections and set the two elements as selected
+            selectedElements = [element1, element2];
+            
+            // Process the combination with a slight delay
+            setTimeout(() => {
+              processCombination();
+              
+              // Remove the source element
+              sourceElement.remove();
+              
+              // Remove the combining animation
+              setTimeout(() => {
+                playgroundElement.classList.remove('combining');
+              }, 500);
+            }, 300);
+          }
+        }
+      } else if (source === 'sidebar') {
         // Create a new element in the playground
         const originalElement = discoveredElements.find(element => element.id === elementId);
         if (originalElement) {
@@ -531,12 +590,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       } else if (source === 'playground') {
         // Move an existing playground element
-        const playgroundElement = document.getElementById(elementId);
-        if (playgroundElement) {
-          playgroundElement.style.left = x + 'px';
-          playgroundElement.style.top = y + 'px';
+        const sourceElement = document.getElementById(elementId);
+        if (sourceElement) {
+          sourceElement.style.left = (x - 40) + 'px'; // Center the element
+          sourceElement.style.top = (y - 20) + 'px';
         }
       }
+      
+      // Reset current dragged element
+      currentDraggedElement = null;
+      currentDraggedElementData = null;
     });
     
     // Call this when elements are rendered
@@ -571,65 +634,42 @@ document.addEventListener('DOMContentLoaded', function() {
       e.dataTransfer.setData('text/plain', this.id);
       e.dataTransfer.setData('source', 'playground');
       e.dataTransfer.setData('elementId', this.dataset.elementId);
-      e.dataTransfer.effectAllowed = 'move';
       this.classList.add('dragging');
+      
+      // Store reference to current dragged element
+      currentDraggedElement = this;
+      currentDraggedElementData = {
+        id: this.id,
+        source: 'playground',
+        elementId: this.dataset.elementId
+      };
     });
     
     elementDiv.addEventListener('dragend', function() {
       this.classList.remove('dragging');
+      // Remove drop-target class from all elements
+      document.querySelectorAll('.drop-target').forEach(el => {
+        el.classList.remove('drop-target');
+      });
+      
+      // Reset current dragged element
+      currentDraggedElement = null;
+      currentDraggedElementData = null;
     });
     
     // Handle combining elements when one is dropped on another
     elementDiv.addEventListener('dragover', function(e) {
       e.preventDefault();
-      const sourceElementId = e.dataTransfer.getData('elementId');
-      if (sourceElementId && sourceElementId !== this.dataset.elementId) {
-        e.dataTransfer.dropEffect = 'link';
+      
+      // Only highlight as drop target if it's a different element
+      if (currentDraggedElement && currentDraggedElement !== this) {
         this.classList.add('drop-target');
+        e.dataTransfer.dropEffect = 'move';
       }
     });
     
     elementDiv.addEventListener('dragleave', function() {
       this.classList.remove('drop-target');
-    });
-    
-    elementDiv.addEventListener('drop', function(e) {
-      e.preventDefault();
-      this.classList.remove('drop-target');
-      
-      const sourceElementId = e.dataTransfer.getData('elementId');
-      const sourcePlaygroundId = e.dataTransfer.getData('text/plain');
-      const source = e.dataTransfer.getData('source');
-      
-      if (source === 'playground' && sourceElementId && sourceElementId !== this.dataset.elementId) {
-        // Find the two elements
-        const element1 = discoveredElements.find(el => el.id === sourceElementId);
-        const element2 = discoveredElements.find(el => el.id === this.dataset.elementId);
-        
-        if (element1 && element2) {
-          // Add combining animation class
-          this.classList.add('combining');
-          
-          // Clear selections and set the two elements as selected
-          selectedElements = [element1, element2];
-          
-          // Process the combination with a slight delay
-          setTimeout(() => {
-            processCombination();
-            
-            // Remove the source element
-            const sourceElement = document.getElementById(sourcePlaygroundId);
-            if (sourceElement) {
-              sourceElement.remove();
-            }
-            
-            // Remove the combining animation
-            setTimeout(() => {
-              this.classList.remove('combining');
-            }, 500);
-          }, 300);
-        }
-      }
     });
     
     // Add the element to the playground
@@ -752,14 +792,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add the result to the playground
     setTimeout(() => {
-      // Calculate average position of combined elements
+      // Calculate position from the combining element
       const targetElement = document.querySelector('#playground .combining');
       if (targetElement) {
+        // Store the position of the target element
         const rect = targetElement.getBoundingClientRect();
         const playgroundRect = combinationZone.getBoundingClientRect();
+        
         const x = (rect.left + rect.width/2) - playgroundRect.left;
         const y = (rect.top + rect.height/2) - playgroundRect.top;
+        
+        // Remove the combining element
+        targetElement.remove();
+        
+        // Add the result element at the same position
         addElementToPlayground(result, x, y);
+        
+        // Flash effect for the new element
+        setTimeout(() => {
+          const newElement = document.querySelector(`#playground [data-element-id="${result.id}"]`);
+          if (newElement) {
+            newElement.classList.add('combining');
+            setTimeout(() => {
+              newElement.classList.remove('combining');
+            }, 700);
+          }
+        }, 100);
       } else {
         // Fallback to center if no elements found
         const playgroundRect = combinationZone.getBoundingClientRect();
@@ -770,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Reset selected elements
       selectedElements = [];
-    }, 1000);
+    }, 700);
   }
   
   // Generate a combination using AI
