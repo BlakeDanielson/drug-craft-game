@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set up event listeners
     setupEventListeners();
+    console.log('Event listeners set up.'); // LOG ADDED
 
     // Set up settings panel
     initializeSettings();
@@ -361,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Render all discovered elements in the panel
   function renderElements(searchTerm = '') {
+    console.log(`Rendering elements (Search: "${searchTerm}", Category: "${activeCategory}")`); // LOG ADDED
     elementsList.innerHTML = '';
 
     // Filter elements by search term and category
@@ -375,11 +377,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // Debug output
-    console.log('Rendering elements:', filteredElements);
+    console.log('Filtered elements count:', filteredElements.length); // LOG ADDED
 
     filteredElements.forEach(element => {
       // Guard against undefined elements if filtering logic fails
-      if (!element) return;
+      if (!element) {
+          console.warn("Skipping undefined element during render"); // LOG ADDED
+          return;
+      }
+      console.log(`Creating div for: ${element.name} (ID: ${element.id})`); // LOG ADDED
       const elementDiv = createElementDiv(element);
       elementsList.appendChild(elementDiv);
 
@@ -393,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
       noElementsMsg.className = 'no-elements-message';
       elementsList.appendChild(noElementsMsg);
     }
+    console.log('Finished rendering elements.'); // LOG ADDED
   }
 
   // Create an element div
@@ -402,6 +409,8 @@ document.addEventListener('DOMContentLoaded', function() {
     div.dataset.id = element.id; // Use database ID
     // Use icon from element data, provide fallback
     div.innerHTML = `<span class="element-icon">${element.icon || '❓'}</span> ${element.name}`;
+    div.setAttribute('draggable', 'true'); // Ensure this is set
+    console.log(`Element div created for ${element.name}, draggable set:`, div.getAttribute('draggable')); // LOG ADDED
     return div;
   }
 
@@ -469,51 +478,64 @@ document.addEventListener('DOMContentLoaded', function() {
     setupDragAndDrop();
   }
 
+  // Named handler for sidebar drag start
+  function handleSidebarDragStart(e) {
+      console.log('--- Sidebar Drag Start Event Fired ---'); // AGGRESSIVE LOG
+      const element = e.target.closest('.element');
+      if (!element) {
+          console.log('DragStart ignored: Not on an element.');
+          return;
+      }
+      const elementId = element.dataset.id;
+      if (!elementId) {
+          console.log('DragStart ignored: Element missing ID.');
+          return;
+      }
+      console.log(`DragStart: Element ID ${elementId}`);
+      try {
+        e.dataTransfer.setData('text/plain', elementId);
+        e.dataTransfer.setData('source', 'sidebar');
+        e.dataTransfer.effectAllowed = 'copy';
+        element.classList.add('dragging');
+        currentDraggedElementData = { id: elementId, source: 'sidebar' };
+        console.log('Drag Start Data Set:', currentDraggedElementData);
+      } catch (err) {
+        console.error("Error in dragstart:", err); // Log potential errors setting data
+      }
+  }
+  // Named handler for sidebar drag end
+  function handleSidebarDragEnd(e) {
+      console.log('--- Sidebar Drag End Event Fired ---'); // AGGRESSIVE LOG
+      const element = e.target.closest('.element');
+      if (element) {
+          element.classList.remove('dragging');
+      }
+      document.querySelectorAll('#playground .drop-target').forEach(el => {
+          el.classList.remove('drop-target');
+      });
+      // Reset data only if it matches the element ending the drag
+      if (currentDraggedElementData?.id === element?.dataset?.id && currentDraggedElementData?.source === 'sidebar') {
+        currentDraggedElementData = null;
+        console.log('Drag End Data Reset');
+      }
+  }
+
   // Setup drag and drop functionality
   function setupDragAndDrop() {
-    // Make elements in the sidebar draggable
-    const makeElementsDraggable = () => {
-      // Use event delegation on the elementsList container
-      elementsList.addEventListener('dragstart', function(e) {
-          const element = e.target.closest('.element');
-          if (!element) return; // Exit if drag didn't start on an element
-
-          // Use database ID from dataset
-          const elementId = element.dataset.id;
-          if (!elementId) return;
-
-          e.dataTransfer.setData('text/plain', elementId); // Send DB ID
-          e.dataTransfer.setData('source', 'sidebar');
-          e.dataTransfer.effectAllowed = 'copy';
-          element.classList.add('dragging');
-
-          // Store reference to current dragged element data
-          currentDraggedElementData = {
-            id: elementId, // Store DB ID
-            source: 'sidebar'
-          };
-          console.log('Drag Start (Sidebar):', currentDraggedElementData);
-      });
-
-       elementsList.addEventListener('dragend', function(e) {
-           const element = e.target.closest('.element');
-           if (!element) return;
-
-           element.classList.remove('dragging');
-           // Remove drop-target class from all elements in playground
-           document.querySelectorAll('#playground .drop-target').forEach(el => {
-               el.classList.remove('drop-target');
-           });
-
-           // Reset current dragged element data
-           currentDraggedElementData = null;
-           console.log('Drag End (Sidebar)');
-       });
+    // Make elements in the sidebar draggable using delegation
+    const makeSidebarDraggable = () => {
+      console.log("Setting up sidebar drag listeners on #elements-list"); // LOG ADDED
+      elementsList.removeEventListener('dragstart', handleSidebarDragStart); // Remove previous listener if any
+      elementsList.addEventListener('dragstart', handleSidebarDragStart); // Add named handler
+      elementsList.removeEventListener('dragend', handleSidebarDragEnd);
+      elementsList.addEventListener('dragend', handleSidebarDragEnd);
     };
 
     // Make playground a valid drop target
+    console.log("Setting up playground drop listeners on #playground"); // LOG ADDED
     combinationZone.addEventListener('dragover', function(e) {
       e.preventDefault(); // Necessary to allow dropping
+      // console.log('Drag Over Playground'); // Can be noisy, enable if needed
       // Set drop effect based on source
       if (currentDraggedElementData?.source === 'sidebar') {
           e.dataTransfer.dropEffect = 'copy';
@@ -522,38 +544,31 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
           e.dataTransfer.dropEffect = 'none';
       }
-       // Optional: Add visual feedback for dragover
-       // combinationZone.classList.add('drag-over');
     });
-
-    // Optional: Remove visual feedback on dragleave
-    // combinationZone.addEventListener('dragleave', function(e) {
-    //    combinationZone.classList.remove('drag-over');
-    // });
 
     // Handle element drops into the playground
     combinationZone.addEventListener('drop', function(e) {
       e.preventDefault();
-      // combinationZone.classList.remove('drag-over'); // Remove visual feedback
-      console.log('Drop Event Triggered');
+      console.log('--- Playground Drop Event Fired ---'); // AGGRESSIVE LOG
 
       if (!currentDraggedElementData) {
           console.log('Drop ignored: No dragged element data.');
           return;
       }
 
-      const droppedElementId = e.dataTransfer.getData('text/plain'); // Get DB ID
+      // Retrieve data set in dragstart
+      const droppedElementId = e.dataTransfer.getData('text/plain');
       const source = e.dataTransfer.getData('source');
+      const droppedDomId = e.dataTransfer.getData('domId'); // Only present for playground source
 
       // Verify data consistency
       if (droppedElementId !== currentDraggedElementData.id || source !== currentDraggedElementData.source) {
-          console.error('Drag data mismatch!', { droppedElementId, source }, currentDraggedElementData);
-          currentDraggedElementData = null; // Reset inconsistent data
+          console.error('Drop data mismatch!', { droppedElementId, source, droppedDomId }, currentDraggedElementData);
+          // Don't reset currentDraggedElementData here, let dragend handle it
           return;
       }
 
-      console.log('Dropped:', { droppedElementId, source });
-
+      console.log('Dropped:', { droppedElementId, source, droppedDomId });
 
       // Get position relative to playground
       const rect = combinationZone.getBoundingClientRect();
@@ -566,7 +581,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (playgroundElement && source === 'playground') {
         // --- Combine elements already in the playground ---
-        const sourcePlaygroundDOMId = currentDraggedElementData.domId; // Need DOM ID for playground elements
+        const sourcePlaygroundDOMId = currentDraggedElementData.domId; // Use DOM ID from drag data
         const sourceElement = document.getElementById(sourcePlaygroundDOMId);
 
         // Ensure we are not dropping onto itself and source element exists
@@ -617,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       } else if (source === 'playground') {
         // --- Move element within the playground ---
-        const sourcePlaygroundDOMId = currentDraggedElementData.domId; // Need DOM ID
+        const sourcePlaygroundDOMId = currentDraggedElementData.domId; // Use DOM ID from drag data
         const sourceElement = document.getElementById(sourcePlaygroundDOMId);
         if (sourceElement) {
           console.log(`Moving playground element ${sourcePlaygroundDOMId} to (${x}, ${y})`);
@@ -629,21 +644,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Reset dragged data after drop handling
-      currentDraggedElementData = null;
-      console.log('Drop handled, dragged data reset.');
+      // Reset dragged data in dragend, not here, to avoid race conditions
+      // currentDraggedElementData = null;
+      console.log('Drop handled.');
     });
 
-    // Initial call to make existing elements draggable
-    makeElementsDraggable();
+    // Initial call to set up sidebar listeners
+    makeSidebarDraggable();
 
-    // Override renderElements to ensure new elements become draggable
-    // (This override seems redundant now with event delegation, consider removing)
-    // const originalRenderElements = renderElements;
-    // renderElements = function(searchTerm = '') {
-    //   originalRenderElements(searchTerm);
-    //   // makeElementsDraggable(); // No longer needed with delegation
-    // };
   }
 
   // Add an element to the playground
@@ -664,48 +672,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Make the playground element draggable
     elementDiv.setAttribute('draggable', 'true');
 
-    // Use event delegation for playground elements as well
-    // No need to add listeners here if combinationZone handles dragstart/end
-
-    // Add the element to the playground visually
-    combinationZone.appendChild(elementDiv);
-    // Track playground elements if needed (e.g., for saving state - not currently used)
-    // playgroundElements.push({ domId: uniqueDomId, elementId: element.id });
-    console.log(`Added element ${element.id} (${element.name}) to playground with DOM ID ${uniqueDomId}`);
-
-
-     // Add drag listeners directly (alternative to delegation if needed)
+    // Add drag listeners directly to elements created in the playground
      elementDiv.addEventListener('dragstart', function(e) {
+         console.log('--- Playground Drag Start Event Fired ---'); // AGGRESSIVE LOG
          // Prevent dragging if already combining
          if (this.classList.contains('combining')) {
              e.preventDefault();
              return;
          }
          const elementId = this.dataset.elementId;
-         e.dataTransfer.setData('text/plain', elementId); // DB ID
-         e.dataTransfer.setData('source', 'playground');
-         e.dataTransfer.setData('domId', this.id); // Include DOM ID for playground elements
-         e.dataTransfer.effectAllowed = 'move';
-         this.classList.add('dragging');
+         if (!elementId) {
+             console.log('Playground DragStart ignored: Element missing ID.');
+             return;
+         }
+         console.log(`Playground DragStart: Element ID ${elementId}, DOM ID ${this.id}`);
+         try {
+           e.dataTransfer.setData('text/plain', elementId); // DB ID
+           e.dataTransfer.setData('source', 'playground');
+           e.dataTransfer.setData('domId', this.id); // Include DOM ID for playground elements
+           e.dataTransfer.effectAllowed = 'move';
+           this.classList.add('dragging');
 
-         currentDraggedElementData = {
-           id: elementId, // DB ID
-           source: 'playground',
-           domId: this.id // DOM ID
-         };
-         console.log('Drag Start (Playground):', currentDraggedElementData);
+           currentDraggedElementData = {
+             id: elementId, // DB ID
+             source: 'playground',
+             domId: this.id // DOM ID
+           };
+           console.log('Playground Drag Start Data Set:', currentDraggedElementData);
+         } catch (err) {
+            console.error("Error in playground dragstart:", err);
+         }
      });
 
      elementDiv.addEventListener('dragend', function(e) {
+         console.log('--- Playground Drag End Event Fired ---'); // AGGRESSIVE LOG
          this.classList.remove('dragging');
          // Remove drop-target class from other playground elements
          document.querySelectorAll('#playground .drop-target').forEach(el => {
              el.classList.remove('drop-target');
          });
-         // Reset if this was the dragged element
+         // Reset data only if it matches the element ending the drag
          if (currentDraggedElementData?.domId === this.id) {
              currentDraggedElementData = null;
-             console.log('Drag End (Playground)');
+             console.log('Playground Drag End Data Reset');
          }
      });
 
@@ -725,6 +734,9 @@ document.addEventListener('DOMContentLoaded', function() {
          this.classList.remove('drop-target');
      });
 
+    // Add the element to the playground visually
+    combinationZone.appendChild(elementDiv);
+    console.log(`Added element ${element.id} (${element.name}) to playground with DOM ID ${uniqueDomId}`);
   }
 
   // REMOVED handleElementClick function
