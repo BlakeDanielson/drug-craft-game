@@ -1,32 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Initial elements - basic drug components as building blocks
-  const initialElements = [
-    { id: 'leaf', name: 'Coca Seeds', icon: '🌿', category: 'natural' },
-    { id: 'seed', name: 'Seed', icon: '🌱', category: 'natural' },
-    { id: 'water', name: 'Water', icon: '💧', category: 'element' },
-    { id: 'fire', name: 'Fire', icon: '🔥', category: 'element' },
-    { id: 'air', name: 'Air', icon: '💨', category: 'element' },
-    { id: 'earth', name: 'Earth', icon: '🌍', category: 'element' }
-  ];
-  
-  // Cache for storing previously generated combinations
-  let combinationCache = {
-    // Predefined combinations
-    'earth+water': { id: 'soil', name: 'Soil', icon: '🌱', category: 'natural', description: 'Soil is the result of the earth and water combined.' },
-    'air+fire': { id: 'smoke', name: 'Smoke', icon: '💨', category: 'element', description: 'Smoke produced from burning materials.' },
-    'air+water': { id: 'mist', name: 'Mist', icon: '🌫️', category: 'element', description: 'Fine water droplets suspended in air.' },
-    'earth+fire': { id: 'ash', name: 'Ash', icon: '⚫', category: 'element', description: 'Residue left after burning.' },
-    'fire+leaf': { id: 'joint', name: 'Joint', icon: '🚬', category: 'equipment', description: 'A rolled paper containing dried plant material.' },
-    'earth+seed': { id: 'cultivation', name: 'Cultivation', icon: '🌾', category: 'process', description: 'The process of growing and tending to plants.' },
-    'fire+water': { id: 'steam', name: 'Steam', icon: '💨', category: 'element', description: 'Water vapor produced by boiling water.' },
-    'leaf+steam': { id: 'vaporizer', name: 'Vaporizer', icon: '💨', category: 'equipment', description: 'A device that converts substances into vapor.' },
-    'leaf+water': { id: 'tea', name: 'Tea', icon: '🍵', category: 'beverage', description: 'An infusion of plant material in hot water.' },
-    'fire+seed': { id: 'roasted_seeds', name: 'Roasted Seeds', icon: '🌰', category: 'food', description: 'Seeds that have been heated until cooked.' }
-  };
-  
-  // Track discovered elements
-  let discoveredElements = [...initialElements];
-  
+  // Supabase client instance (assuming it's initialized in supabaseClient.js and attached to window)
+  const supabase = window._supabase;
+
+  // Store fetched data
+  let discoveredElements = []; // Populated from player_inventory join elements
+  let combinationCache = {}; // Populated from combinations table
+  let allElements = {}; // Cache for all elements by ID for quick lookup
+
   // App settings with default values
   let appSettings = {
     useApi: true,  // Always true as we're removing fallbacks
@@ -62,21 +42,24 @@ document.addEventListener('DOMContentLoaded', function() {
   // Keep track of the currently dragged element
   let currentDraggedElement = null;
   let currentDraggedElementData = null;
-  
+
   // Initialize the game
-  function initGame() {
+  async function initGame() {
     console.log('Game initialization started');
-    console.log('Initial elements:', initialElements);
-    
-    // Load saved data
-    loadFromLocalStorage();
-    console.log('After loading from localStorage, discovered elements:', discoveredElements);
-    
-    // Make sure we have the basic elements
-    ensureBasicElements();
-    
+
+    if (!supabase) {
+      console.error("Supabase client not found. Make sure supabaseClient.js is loaded and initialized.");
+      alert("Error: Supabase client not available. Cannot load game data.");
+      return;
+    }
+
+    // Load data from Supabase
+    await loadDataFromSupabase();
+    console.log('After loading from Supabase, discovered elements:', discoveredElements);
+    console.log('Known combinations:', combinationCache);
+
     // Render the UI
-    renderCategories();
+    renderCategories(); // Needs discoveredElements
     renderElements();
     
     // Set up event listeners
@@ -90,60 +73,73 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Game initialization completed');
   }
-  
-  // Ensure the basic elements are always available
-  function ensureBasicElements() {
-    // Make sure each initial element exists in discoveredElements
-    initialElements.forEach(initialElement => {
-      const elementExists = discoveredElements.some(element => element.id === initialElement.id);
-      if (!elementExists) {
-        console.log('Adding missing basic element:', initialElement.name);
-        discoveredElements.push(initialElement);
+
+  // Load initial game data from Supabase
+  async function loadDataFromSupabase() {
+    console.log('Loading data from Supabase...');
+    try {
+      // 1. Fetch all elements and store in allElements cache
+      const { data: allElementsData, error: elementsError } = await supabase
+        .from('elements')
+        .select('*');
+
+      if (elementsError) throw elementsError;
+      allElements = allElementsData.reduce((acc, el) => {
+        acc[el.id] = el; // Use database ID as key
+        return acc;
+      }, {});
+      console.log('Fetched all elements:', allElements);
+
+      // 2. Fetch discovered elements (player inventory)
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('player_inventory')
+        .select('element_id');
+
+      if (inventoryError) throw inventoryError;
+
+      // Map inventory IDs to full element objects
+      discoveredElements = inventoryData.map(item => allElements[item.element_id]).filter(Boolean); // Filter out potential nulls if element deleted
+      console.log('Fetched discovered elements:', discoveredElements);
+
+      // 3. Fetch known combinations
+      const { data: combinationsData, error: combinationsError } = await supabase
+        .from('combinations')
+        .select('*');
+
+      if (combinationsError) throw combinationsError;
+
+      // Populate combinationCache (key: 'element1_id+element2_id', value: result_element_id)
+      combinationCache = combinationsData.reduce((acc, combo) => {
+        // Ensure consistent key order (smaller ID first)
+        const key = [combo.element1_id, combo.element2_id].sort((a, b) => a - b).join('+');
+        acc[key] = combo.result_element_id; // Store only the result ID
+        return acc;
+      }, {});
+      console.log('Fetched combinations cache:', combinationCache);
+
+      // 4. Load settings from localStorage (keep this for non-persistent settings)
+      try {
+        const savedSettings = localStorage.getItem('drugCraftSettings');
+        if (savedSettings) {
+          const loadedSettings = JSON.parse(savedSettings);
+          // Always force useApi to true (or handle based on actual logic)
+          appSettings = { ...loadedSettings, useApi: true };
+        }
+      } catch (e) {
+        console.error('Error loading settings from localStorage:', e);
       }
-    });
-    
-    // Save to ensure persistence
-    saveToLocalStorage();
+
+    } catch (error) {
+      console.error('Error loading data from Supabase:', error);
+      alert(`Failed to load game data: ${error.message}. Please check console and refresh.`);
+      // Set empty defaults to prevent further errors
+      discoveredElements = [];
+      combinationCache = {};
+      allElements = {};
+    }
   }
-  
-  // Load data from localStorage
-  function loadFromLocalStorage() {
-    // Try to load cache from localStorage
-    try {
-      const savedCache = localStorage.getItem('drugCraftCombinations');
-      if (savedCache) {
-        combinationCache = JSON.parse(savedCache);
-      }
-    } catch (e) {
-      console.error('Error loading cache:', e);
-    }
-    
-    // Try to load discovered elements from localStorage
-    try {
-      const savedElements = localStorage.getItem('drugCraftElements');
-      if (savedElements) {
-        discoveredElements = JSON.parse(savedElements);
-      } else {
-        discoveredElements = [...initialElements];
-      }
-    } catch (e) {
-      console.error('Error loading elements:', e);
-      discoveredElements = [...initialElements];
-    }
-    
-    // Try to load settings from localStorage
-    try {
-      const savedSettings = localStorage.getItem('drugCraftSettings');
-      if (savedSettings) {
-        const loadedSettings = JSON.parse(savedSettings);
-        // Always force useApi to true
-        appSettings = { ...loadedSettings, useApi: true };
-      }
-    } catch (e) {
-      console.error('Error loading settings:', e);
-    }
-  }
-  
+
+
   // Initialize settings panel and controls
   function initializeSettings() {
     // Toggle settings panel visibility
@@ -336,15 +332,18 @@ document.addEventListener('DOMContentLoaded', function() {
     apiStatus.innerHTML = `<span class="status-circle ${statusClass}"></span>${statusText}`;
   }
   
-  // Save settings to localStorage
+  // Save settings to localStorage (only for non-persistent settings)
   function saveSettings() {
     try {
-      localStorage.setItem('drugCraftSettings', JSON.stringify(appSettings));
+      // Filter out data that should be persisted in Supabase if necessary
+      const settingsToSave = { ...appSettings };
+      // delete settingsToSave.someDatabaseRelatedSetting; // Example
+      localStorage.setItem('drugCraftSettings', JSON.stringify(settingsToSave));
     } catch (e) {
-      console.error('Error saving settings:', e);
+      console.error('Error saving settings to localStorage:', e);
     }
   }
-  
+
   // Determine the API endpoint based on environment
   function determineApiEndpoint() {
     const hostname = window.location.hostname;
@@ -453,17 +452,42 @@ document.addEventListener('DOMContentLoaded', function() {
   // Setup event listeners
   function setupEventListeners() {
     // Reset button
-    resetButton.addEventListener('click', function() {
-      if (confirm('Are you sure you want to reset all your discoveries? This will keep previously generated combinations but clear your inventory.')) {
-        discoveredElements = [...initialElements];
-        selectedElements = [];
-        resetCombinationZone();
-        saveToLocalStorage();
-        renderElements();
-        renderCategories();
+    resetButton.addEventListener('click', async function() {
+      if (confirm('Are you sure you want to reset your progress? This will remove all discovered elements except the initial four.')) {
+        console.log('Resetting game progress...');
+        try {
+          // Get IDs of initial elements (assuming they are 1, 2, 3, 4 based on previous steps)
+          const initialElementIds = [1, 2, 3, 4]; // Water, Fire, Earth, Air
+
+          // Delete from player_inventory where element_id is NOT in the initial set
+          const { error: deleteError } = await supabase
+            .from('player_inventory')
+            .delete()
+            .not('element_id', 'in', `(${initialElementIds.join(',')})`);
+
+          if (deleteError) throw deleteError;
+
+          console.log('Player inventory reset in Supabase.');
+
+          // Reload data from Supabase to reflect the reset state
+          await loadDataFromSupabase();
+
+          // Reset UI
+          selectedElements = [];
+          resetCombinationZone();
+          renderElements();
+          renderCategories();
+          searchBar.value = ''; // Clear search bar
+
+          alert('Game reset successfully!');
+
+        } catch (error) {
+          console.error('Error resetting game:', error);
+          alert(`Failed to reset game: ${error.message}`);
+        }
       }
     });
-    
+
     // Search functionality
     searchBar.addEventListener('input', function(e) {
       renderElements(e.target.value);
@@ -713,25 +737,36 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Process the combination of selected elements
   async function processCombination() {
-    // Sort elements to ensure consistent key regardless of order selected
-    const sortedElements = [...selectedElements].sort((a, b) => a.id.localeCompare(b.id));
+    // Use numeric IDs from the database
+    const sortedElements = [...selectedElements].sort((a, b) => a.id - b.id);
     const element1 = sortedElements[0];
     const element2 = sortedElements[1];
-    
-    // Create a unique key for this combination
-    const combinationKey = `${element1.id}+${element2.id}`;
-    
-    console.log('Looking up combination:', combinationKey); // Add logging
-    console.log('Available combinations:', Object.keys(combinationCache)); // Add logging
-    
-    // Check if we already have this combination in cache
+
+    // Create a unique key using database IDs
+    const combinationKey = `${element1.id}+${element2.id}`; // e.g., "1+3"
+
+    console.log('Looking up combination in Supabase cache:', combinationKey);
+    console.log('Available combinations cache:', combinationCache);
+
+    // Check if we already have this combination result ID in the Supabase cache
     if (combinationCache[combinationKey]) {
-      console.log('Found cached combination:', combinationCache[combinationKey]); // Add logging
-      handleCombinationResult(combinationCache[combinationKey]);
-      return; // Add early return to prevent API call
+      const resultElementId = combinationCache[combinationKey];
+      console.log(`Found cached combination result ID: ${resultElementId}`);
+      const resultElement = allElements[resultElementId];
+      if (resultElement) {
+        console.log('Handling cached result:', resultElement);
+        await handleCombinationResult(resultElement, element1.id, element2.id); // Pass original element IDs
+      } else {
+        console.error(`Result element with ID ${resultElementId} not found in allElements cache.`);
+        resultZone.innerHTML = `<p>Error: Cached result element not found.</p>`;
+        setTimeout(resetCombinationZone, 3000);
+      }
+      return;
     }
 
-    // API is required - check status first
+    console.log('Combination not found in cache. Proceeding to generate.');
+
+    // API generation is required - check status first (keep existing API logic for now)
     if (appSettings.apiStatus === 'unavailable') {
       resultZone.innerHTML = `
         <div class="element">
@@ -749,16 +784,69 @@ document.addEventListener('DOMContentLoaded', function() {
     resultZone.innerHTML = `<div class="loading"></div> Generating combination...`;
     
     try {
-      // Generate combination with AI
-      const result = await generateCombination([element1, element2]);
-      
-      // Store in cache
-      combinationCache[combinationKey] = result;
-      saveToLocalStorage();
-      
-      // Process the result
-      handleCombinationResult(result);
-    } catch (error) {
+      // Generate combination with AI (keep existing call structure)
+      // IMPORTANT: The generateCombination function and the API endpoint
+      // MUST be updated to work with and return database IDs.
+      // For now, assume 'result' contains the new element data *including* its database ID.
+      const result = await generateCombination([element1, element2]); // Assume result includes { id: new_db_id, name, icon, ... }
+
+      // Store the new combination mapping in Supabase *and* local cache
+      try {
+        const { data: insertData, error: insertError } = await supabase
+          .from('combinations')
+          .insert({
+            element1_id: element1.id,
+            element2_id: element2.id,
+            result_element_id: result.id // Assumes result has the DB ID
+          })
+          .select(); // Select to confirm insertion
+
+        if (insertError) {
+          // Handle potential unique constraint violation (combination already exists)
+          if (insertError.code === '23505') { // Unique violation code for PostgreSQL
+             console.warn(`Combination ${element1.id}+${element2.id} already exists in DB, but wasn't in cache. Reloading cache.`);
+             // Fetch the existing combination instead of erroring
+             const { data: existingCombo, error: fetchError } = await supabase
+               .from('combinations')
+               .select('result_element_id')
+               .eq('element1_id', element1.id)
+               .eq('element2_id', element2.id)
+               .single();
+
+             if (fetchError || !existingCombo) {
+               console.error("Failed to fetch existing combination after unique constraint error:", fetchError);
+               throw new Error("Combination exists but couldn't fetch it.");
+             }
+             result.id = existingCombo.result_element_id; // Use the correct existing ID
+          } else {
+            throw insertError; // Re-throw other errors
+          }
+        } else {
+          console.log('New combination saved to Supabase:', insertData);
+        }
+
+        // Update local cache
+        combinationCache[combinationKey] = result.id;
+        console.log('Updated local combination cache:', combinationCache);
+
+        // Add the newly created element to the allElements cache if it's truly new
+        if (!allElements[result.id]) {
+            allElements[result.id] = result; // Add the full element object
+            console.log('Added new element to allElements cache:', result);
+        }
+
+
+        // Process the result (which now includes the DB ID)
+        await handleCombinationResult(result, element1.id, element2.id);
+
+      } catch (dbError) {
+         console.error('Error saving combination to Supabase:', dbError);
+         resultZone.innerHTML = `<p>Error saving combination: ${dbError.message}</p>`;
+         setTimeout(resetCombinationZone, 4000);
+         return; // Stop processing if DB save fails
+      }
+
+    } catch (error) { // Catch errors from generateCombination (API call)
       resultZone.innerHTML = `
         <p>Error generating combination: ${error.message}</p>
         <p>The OpenAI API is required for this game to function.</p>
@@ -771,190 +859,186 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(resetCombinationZone, 4000);
     }
   }
-  
-  // Handle the result of a combination
-  function handleCombinationResult(result) {
-    // Check if this is a new discovery
-    const isNewDiscovery = !discoveredElements.some(e => e.id === result.id);
-    
+
+  // Handle the result of a combination (now async)
+  async function handleCombinationResult(resultElement, inputElement1Id, inputElement2Id) {
+    console.log("Handling combination result:", resultElement);
+
+    // Check if this element is already in the player's discovered list
+    const isNewDiscovery = !discoveredElements.some(e => e.id === resultElement.id);
+
     if (isNewDiscovery) {
-      // Add to discovered elements
-      discoveredElements.push(result);
-      saveToLocalStorage();
-      
-      // Update the elements panel
+      console.log("New discovery:", resultElement.name);
+      // Add to discovered elements locally first for immediate UI update
+      discoveredElements.push(resultElement);
+
+      // Save the new discovery to player_inventory in Supabase
+      try {
+        const { error } = await supabase
+          .from('player_inventory')
+          .insert({ element_id: resultElement.id });
+
+        // Handle potential unique constraint violation gracefully (already discovered)
+        if (error && error.code !== '23505') { // 23505 is unique_violation
+          throw error;
+        } else if (error && error.code === '23505') {
+           console.warn(`Element ${resultElement.id} already exists in player_inventory.`);
+        } else {
+           console.log(`Element ${resultElement.id} (${resultElement.name}) saved to player inventory.`);
+        }
+
+      } catch (error) {
+        console.error('Error saving new discovery to Supabase:', error);
+        // Optionally revert local addition or notify user
+        discoveredElements = discoveredElements.filter(el => el.id !== resultElement.id); // Revert local add
+        alert(`Failed to save discovery ${resultElement.name}: ${error.message}`);
+        // Don't proceed with UI updates if save failed
+        resetCombinationZone(); // Reset UI
+        return;
+      }
+
+      // Update the elements panel and categories only after successful save
       renderElements();
-      renderCategories();
+      renderCategories(); // Update categories if the new element has a new one
     }
-    
-    // Show result
+
+    // Show result in the result zone
     resultZone.innerHTML = `
       <div class="element">
-        <span class="element-icon">${result.icon}</span> ${result.name}
+        <span class="element-icon">${resultElement.icon || '❓'}</span> ${resultElement.name}
         ${isNewDiscovery ? ' <span style="color: #4ecdc4;">(New Discovery!)</span>' : ''}
       </div>
-      ${result.description ? `<p class="description">${result.description}</p>` : ''}
+      ${resultElement.description ? `<p class="description">${resultElement.description}</p>` : ''}
     `;
-    
-    // Add the result to the playground
+
+    // Add the result element to the playground visually
     setTimeout(() => {
-      // Calculate position from the combining element
-      const targetElement = document.querySelector('#playground .combining');
+      const targetElement = document.querySelector('#playground .combining'); // The element that was dropped onto
       if (targetElement) {
-        // Get the stored midpoint position or calculate if not available
         let x, y;
         if (targetElement.dataset.resultX && targetElement.dataset.resultY) {
           x = parseFloat(targetElement.dataset.resultX);
           y = parseFloat(targetElement.dataset.resultY);
         } else {
-          // Fallback to target element position
           const rect = targetElement.getBoundingClientRect();
           const playgroundRect = combinationZone.getBoundingClientRect();
-          x = (rect.left + rect.width/2) - playgroundRect.left;
-          y = (rect.top + rect.height/2) - playgroundRect.top;
+          x = (rect.left + rect.width / 2) - playgroundRect.left;
+          y = (rect.top + rect.height / 2) - playgroundRect.top;
         }
-        
-        // Remove the combining element
-        targetElement.remove();
-        
-        // Add the result element at the calculated position
-        addElementToPlayground(result, x, y);
-        
-        // Flash effect for the new element
+        targetElement.remove(); // Remove the element that was dropped onto
+
+        addElementToPlayground(resultElement, x, y); // Add the new element
+
+        // Flash effect
         setTimeout(() => {
-          const newElement = document.querySelector(`#playground [data-element-id="${result.id}"]`);
-          if (newElement) {
-            newElement.classList.add('combining');
+          // Find the newly added element using its database ID
+          const newElementDiv = document.querySelector(`#playground [data-element-id="${resultElement.id}"]`);
+          if (newElementDiv) {
+            newElementDiv.classList.add('combining'); // Re-use combining class for flash
             setTimeout(() => {
-              newElement.classList.remove('combining');
+              newElementDiv.classList.remove('combining');
             }, 700);
           }
         }, 100);
+
       } else {
-        // Fallback to center if no elements found
+        console.warn("Could not find '.combining' element to position result.");
+        // Fallback: Add to center
         const playgroundRect = combinationZone.getBoundingClientRect();
-        const x = playgroundRect.width / 2;
-        const y = playgroundRect.height / 2;
-        addElementToPlayground(result, x, y);
+        addElementToPlayground(resultElement, playgroundRect.width / 2, playgroundRect.height / 2);
       }
-      
-      // Reset selected elements
+
+      // Reset selected elements array
       selectedElements = [];
-    }, 700);
+    }, 700); // Delay to allow combination animation/display
   }
-  
-  // Generate a combination using AI
+
+
+  // Generate a combination using AI (Placeholder - needs API update)
+  // IMPORTANT: This function and the API it calls (/api/generate-combination)
+  // need to be updated to handle database IDs.
+  // It should check Supabase 'combinations' table first.
+  // If not found, call AI. AI response must include the new element's
+  // database ID if it creates one, or the existing ID if it finds one.
   async function generateCombination(elements) {
-    // Check if we have a cached result
-    const elementIds = elements.map(el => el.id).sort();
-    const key = elementIds.join('+');
-    if (combinationCache[key]) {
-      console.log('Using cached combination for:', key);
-      return combinationCache[key];
-    }
+      // Assume elements are full objects with DB IDs [{id: 1, name: 'Water', ...}, {id: 3, name: 'Earth', ...}]
+      console.log('Attempting AI generation for elements (IDs):', elements.map(el => el.id));
 
-    console.log('Generating combination for elements:', elements);
-    
-    const apiUrl = determineApiEndpoint();
-    
-    try {
-      console.log('Sending API request to:', apiUrl);
-      
-      // Extract just the necessary information for each element
-      const elementData = elements.map(el => ({
-        id: el.id,
-        name: el.name,
-        category: el.category
-      }));
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          elements: elementData,
-          isTest: false
-        }),
-      });
-      
-      console.log('API response status:', response.status);
-      
-      // Check if the response is OK
-      if (!response.ok) {
-        let errorMessage = `API error: ${response.status}`;
-        try {
-          // Try to parse as JSON first
-          const errorData = await response.json();
-          console.error('API error:', errorData);
-          errorMessage = errorData.message || errorMessage;
-        } catch (parseError) {
-          // If it's not JSON, get the text snippet
-          const textResponse = await response.text();
-          console.error('API returned non-JSON error:', textResponse.substring(0, 150));
-          if (textResponse.includes('<')) {
-            errorMessage = 'API returned HTML instead of JSON. The endpoint might not exist.';
+      // --- Database Check (Should ideally be here or in the API) ---
+      // const sortedIds = elements.map(el => el.id).sort((a, b) => a - b);
+      // const comboKey = sortedIds.join('+');
+      // if (combinationCache[comboKey]) { /* Already handled in processCombination */ }
+      // else { /* Query Supabase combinations table */ }
+      // --- End Database Check ---
+
+
+      const apiUrl = determineApiEndpoint();
+      try {
+          console.log('Sending API request to:', apiUrl);
+          const elementData = elements.map(el => ({ id: el.id, name: el.name, category: el.category })); // Send IDs
+
+          const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ elements: elementData, isTest: false }),
+          });
+
+          console.log('API response status:', response.status);
+          if (!response.ok) { /* ... existing error handling ... */
+              let errorMessage = `API error: ${response.status}`;
+              try {
+                  const errorData = await response.json();
+                  errorMessage = errorData.message || errorMessage;
+              } catch {
+                  const textResponse = await response.text();
+                  if (textResponse.includes('<')) errorMessage = 'API returned HTML. Endpoint might be wrong.';
+              }
+              updateApiStatus('unavailable'); // Use the helper function
+              saveSettings(); // Save updated settings
+              throw new Error(errorMessage);
           }
-        }
-        
-        // Update API status
-        appSettings.apiStatus = 'unavailable';
-        saveToLocalStorage();
-        
-        throw new Error(errorMessage);
-      }
 
-      // Check content type to make sure it's JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.error('API returned non-JSON response type:', contentType);
-        throw new Error('API returned incorrect content type. Expected JSON.');
-      }
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+              throw new Error('API returned incorrect content type.');
+          }
 
-      const result = await response.json();
-      console.log('API response data:', result);
-      
-      // Validate the result
-      if (!result || !result.result || !result.name || !result.description || !result.category) {
-        console.error('Invalid API response format:', result);
-        throw new Error('Invalid response from API');
-      }
+          const result = await response.json(); // **ASSUME result includes DB ID, e.g., { id: 15, name: 'Steam', ... }**
+          console.log('API response data:', result);
 
-      // Update API status to available since request succeeded
-      appSettings.apiStatus = 'available';
-      saveToLocalStorage();
-      
-      // Cache the result
-      combinationCache[key] = result;
-      saveToLocalStorage();
-      
-      return result;
-    } catch (error) {
-      console.error('Error generating combination:', error);
-      throw error;
-    }
+          // Basic validation (ensure ID is present)
+          if (!result || !result.id || !result.name) {
+              console.error('Invalid API response format (missing id or name):', result);
+              throw new Error('Invalid response from API (missing id or name)');
+          }
+
+          updateApiStatus('available'); // Use the helper function
+          saveSettings(); // Save updated settings
+
+          // **No need to update combinationCache here - it's done in processCombination after DB insert**
+          // **No need to saveToLocalStorage here**
+
+          return result; // Return the full result object (including DB ID)
+      } catch (error) {
+          console.error('Error in generateCombination:', error);
+          updateApiStatus('unavailable'); // Ensure status is updated on error
+          saveSettings();
+          throw error; // Re-throw error to be caught by processCombination
+      }
   }
-  
-  // Reset the combination zone
+
+
+  // Reset the combination zone visually
   function resetCombinationZone() {
-    // Clear all elements from the playground
-    playgroundElements = [];
-    combinationZone.innerHTML = '';
-    selectedElements = [];
-    resultZone.innerHTML = '<p>Drag elements to the playground and combine them</p>';
+    playgroundElements = []; // Clear tracking array
+    combinationZone.innerHTML = ''; // Clear visual elements
+    selectedElements = []; // Clear selection
+    resultZone.innerHTML = '<p>Drag elements to the playground and combine them</p>'; // Reset result message
   }
-  
-  // Save current state to localStorage
-  function saveToLocalStorage() {
-    try {
-      localStorage.setItem('drugCraftElements', JSON.stringify(discoveredElements));
-      localStorage.setItem('drugCraftCombinations', JSON.stringify(combinationCache));
-    } catch (e) {
-      console.error('Error saving to localStorage:', e);
-    }
-  }
-  
-  // Update the combination area to its initial state
+
+  // REMOVED saveToLocalStorage function - data is saved directly to Supabase
+
+  // Update the combination area visually
   function updateCombinationArea() {
     // Reset the combination zone
     resetCombinationZone();
@@ -964,4 +1048,4 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize the game
   initGame();
-}); 
+});
