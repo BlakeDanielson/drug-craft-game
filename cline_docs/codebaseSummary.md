@@ -69,6 +69,16 @@
     *   Save new combinations to the database.
 *   Added `icon` and `category` columns to the `elements` table.
 *   Added logging to `game.js` for debugging.
+*   **Implemented UI/UX Improvements (see `cline_docs/UI_improvements.md` for details):**
+    *   Enhanced visual feedback during drag-and-drop (source dimming, target dimming).
+    *   Added distinct animations for element merging and result appearance.
+    *   Added shake animation for errors in the result zone.
+    *   Added category headers and discovered indicators to the element list.
+    *   Added a combination history log.
+    *   Added tooltips to elements.
+    *   Added element counts to category buttons.
+    *   Added search term highlighting.
+    *   Integrated API status/settings toggle into the header.
 
 ## User Feedback Integration
 

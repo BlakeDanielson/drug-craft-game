@@ -11,6 +11,9 @@
   <div class="container">
     <header>
       <h1>Drug Craft</h1>
+      <div class="header-controls">
+        <button id="header-settings-toggle" class="header-settings-button">⚙️ Settings / API Status</button>
+      </div>
       <p>Combine real substances and materials to discover factual drug compounds, paraphernalia, and cultural artifacts. An educational encyclopedia of drug culture and pharmacology.</p>
       <p class="instructions">Try both methods: <strong>click</strong> elements to select them or <strong>drag and drop</strong> one element onto another to combine them!</p>
     </header>
@@ -31,6 +34,12 @@
         </div>
         <div id="result-zone" class="result-zone">
           <p>Drag elements to the playground and combine them</p>
+        </div>
+        <div id="history-log" class="history-log">
+          <h4>History</h4>
+          <div id="history-items" class="history-items">
+            <!-- History items will be added here -->
+          </div>
         </div>
       </div>
       
@@ -57,7 +66,7 @@
       </div>
     </div>
     
-    <button id="toggle-settings" class="settings-toggle">🔌 Test API</button>
+    <!-- Floating button removed -->
   </div>
   
   <!-- Supabase Client Library -->

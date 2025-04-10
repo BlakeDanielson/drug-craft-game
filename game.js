@@ -23,11 +23,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Settings panel elements
   const settingsPanel = document.getElementById('settings-panel');
-  const settingsToggle = document.getElementById('toggle-settings');
+  const headerSettingsToggle = document.getElementById('header-settings-toggle'); // New header button
   const closeButton = document.getElementById('close-settings');
   const testApiButton = document.getElementById('test-api-button');
   const apiStatus = document.getElementById('api-status');
   const apiMessage = document.getElementById('api-message');
+  const historyItemsContainer = document.getElementById('history-items'); // History log container
 
   // Selected elements for combination
   let selectedElements = [];
@@ -143,8 +144,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize settings panel and controls
   function initializeSettings() {
-    // Toggle settings panel visibility
-    settingsToggle.addEventListener('click', function() {
+    // Toggle settings panel visibility using the header button
+    headerSettingsToggle.addEventListener('click', function() {
       settingsPanel.style.display = 'block';
       // Test API automatically when opening settings
       testApiConnection();
@@ -198,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         apiStatusElement.textContent = 'Connected';
         apiStatusElement.className = 'status connected';
+        headerSettingsToggle.textContent = '⚙️ API Connected'; // Update header button
 
         // Show the test results
         apiMessage.innerHTML = `
@@ -214,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         apiStatusElement.textContent = 'Error';
         apiStatusElement.className = 'status error';
+        headerSettingsToggle.textContent = '⚠️ API Error'; // Update header button
 
         let errorDetails = 'Unknown error during test.';
         if (data.details) {
@@ -235,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       apiStatusElement.textContent = 'Disconnected';
       apiStatusElement.className = 'status disconnected';
+      headerSettingsToggle.textContent = '🔌 API Disconnected'; // Update header button
 
       let errorMessage = error.message;
       if (errorMessage.includes("Unexpected token '<'")) {
@@ -345,8 +349,17 @@ document.addEventListener('DOMContentLoaded', function() {
     categories.forEach(category => {
       const button = document.createElement('button');
       button.className = `category ${category === activeCategory ? 'active' : ''}`;
-      button.textContent = category.charAt(0).toUpperCase() + category.slice(1);
       button.dataset.category = category;
+
+      // Calculate count for this category
+      let count;
+      if (category === 'all') {
+        count = discoveredElements.length;
+      } else {
+        count = discoveredElements.filter(el => el.category === category).length;
+      }
+
+      button.textContent = `${category.charAt(0).toUpperCase() + category.slice(1)} (${count})`;
       categoriesContainer.appendChild(button);
     });
 
@@ -379,18 +392,54 @@ document.addEventListener('DOMContentLoaded', function() {
     // Debug output
     console.log('Filtered elements count:', filteredElements.length); // LOG ADDED
 
-    filteredElements.forEach(element => {
-      // Guard against undefined elements if filtering logic fails
-      if (!element) {
-          console.warn("Skipping undefined element during render"); // LOG ADDED
-          return;
-      }
-      console.log(`Creating div for: ${element.name} (ID: ${element.id})`); // LOG ADDED
-      const elementDiv = createElementDiv(element);
-      elementsList.appendChild(elementDiv);
+    // Group elements by category if 'all' is selected or search is active without specific category
+    const shouldGroup = activeCategory === 'all' || searchTerm !== '';
+    let groupedElements = {};
+    if (shouldGroup) {
+      groupedElements = filteredElements.reduce((acc, el) => {
+        const category = el.category || 'Uncategorized'; // Group elements without a category
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(el);
+        return acc;
+      }, {});
+      // Sort categories alphabetically, maybe put 'Uncategorized' last
+      const sortedCategories = Object.keys(groupedElements).sort((a, b) => {
+        if (a === 'Uncategorized') return 1;
+        if (b === 'Uncategorized') return -1;
+        return a.localeCompare(b);
+      });
 
-      // Click listener removed - using drag and drop primarily
-    });
+      // Render grouped elements
+      sortedCategories.forEach(category => {
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.textContent = category;
+        elementsList.appendChild(header);
+
+        groupedElements[category].forEach(element => {
+          if (!element) {
+            console.warn("Skipping undefined element during grouped render");
+            return;
+          }
+          const elementDiv = createElementDiv(element);
+          elementsList.appendChild(elementDiv);
+        });
+      });
+
+    } else {
+      // Render filtered elements directly if a specific category is selected
+      filteredElements.forEach(element => {
+        if (!element) {
+            console.warn("Skipping undefined element during single category render");
+            return;
+          }
+          const elementDiv = createElementDiv(element);
+          elementsList.appendChild(elementDiv);
+        });
+    }
+
 
     // If no elements are shown, make sure we show a message
     if (filteredElements.length === 0) {
@@ -407,8 +456,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const div = document.createElement('div');
     div.className = 'element';
     div.dataset.id = element.id; // Use database ID
+
+    // Check if the element is discovered (present in the discoveredElements array)
+    const isDiscovered = discoveredElements.some(discovered => discovered.id === element.id);
+    if (isDiscovered) {
+      div.classList.add('discovered');
+    }
+
     // Use icon from element data, provide fallback
-    div.innerHTML = `<span class="element-icon">${element.icon || '❓'}</span> ${element.name}`;
+    const iconSpan = `<span class="element-icon">${element.icon || '❓'}</span>`;
+
+    // Highlight search term if active
+    const currentSearchTerm = searchBar.value.trim();
+    let elementNameHTML = element.name;
+    if (currentSearchTerm !== '') {
+      const regex = new RegExp(`(${currentSearchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'); // Escape regex chars, case-insensitive
+      elementNameHTML = element.name.replace(regex, `<span class="search-highlight">$1</span>`);
+    }
+
+    div.innerHTML = `${iconSpan} ${elementNameHTML}`;
+
+
+    // Add tooltip (title attribute)
+    let tooltipText = `Category: ${element.category || 'Unknown'}`;
+    if (element.description) {
+      // Add first ~100 chars of description
+      tooltipText += `\nDescription: ${element.description.substring(0, 100)}${element.description.length > 100 ? '...' : ''}`;
+    }
+    div.setAttribute('title', tooltipText);
+
     div.setAttribute('draggable', 'true'); // Ensure this is set
     console.log(`Element div created for ${element.name}, draggable set:`, div.getAttribute('draggable')); // LOG ADDED
     return div;
@@ -496,7 +572,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.dataTransfer.setData('text/plain', elementId);
         e.dataTransfer.setData('source', 'sidebar');
         e.dataTransfer.effectAllowed = 'copy';
-        element.classList.add('dragging');
+        // Add the new class to the original element in the list
+        element.classList.add('element-source-dragging');
         currentDraggedElementData = { id: elementId, source: 'sidebar' };
         console.log('Drag Start Data Set:', currentDraggedElementData);
       } catch (err) {
@@ -508,7 +585,8 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('--- Sidebar Drag End Event Fired ---'); // AGGRESSIVE LOG
       const element = e.target.closest('.element');
       if (element) {
-          element.classList.remove('dragging');
+          // Remove the source dragging class from the original element
+          element.classList.remove('element-source-dragging');
       }
       document.querySelectorAll('#playground .drop-target').forEach(el => {
           el.classList.remove('drop-target');
@@ -550,6 +628,11 @@ document.addEventListener('DOMContentLoaded', function() {
     combinationZone.addEventListener('drop', function(e) {
       e.preventDefault();
       console.log('--- Playground Drop Event Fired ---'); // AGGRESSIVE LOG
+
+      // Remove dimming after drop (ensure this happens regardless of outcome)
+      document.querySelectorAll('#playground .element.dimmed-non-target').forEach(el => {
+        el.classList.remove('dimmed-non-target');
+      });
 
       if (!currentDraggedElementData) {
           console.log('Drop ignored: No dragged element data.');
@@ -595,26 +678,47 @@ document.addEventListener('DOMContentLoaded', function() {
           const element2 = allElements[element2Id];
 
           if (element1 && element2) {
-            playgroundElement.classList.add('combining'); // Visual feedback on target
+            // playgroundElement.classList.add('combining'); // OLD - Replaced with merging animation
 
-            // Calculate midpoint for result placement
+            // Calculate midpoint for animation target and result placement
             const sourceRect = sourceElement.getBoundingClientRect();
             const targetRect = playgroundElement.getBoundingClientRect();
             const midX = (sourceRect.left + targetRect.left + sourceRect.width / 2 + targetRect.width / 2) / 2 - rect.left;
             const midY = (sourceRect.top + targetRect.top + sourceRect.height / 2 + targetRect.height / 2) / 2 - rect.top;
 
-            // Store position on the target element for handleCombinationResult
+            // Calculate translation vectors for animation
+            const sourceCurrentX = sourceRect.left + sourceRect.width / 2 - rect.left;
+            const sourceCurrentY = sourceRect.top + sourceRect.height / 2 - rect.top;
+            const targetCurrentX = targetRect.left + targetRect.width / 2 - rect.left;
+            const targetCurrentY = targetRect.top + targetRect.height / 2 - rect.top;
+
+            const sourceTx = midX - sourceCurrentX;
+            const sourceTy = midY - sourceCurrentY;
+            const targetTx = midX - targetCurrentX;
+            const targetTy = midY - targetCurrentY;
+
+            // Apply animation class and CSS variables
+            sourceElement.style.setProperty('--tx', `${sourceTx}px`);
+            sourceElement.style.setProperty('--ty', `${sourceTy}px`);
+            sourceElement.classList.add('merging');
+
+            playgroundElement.style.setProperty('--tx', `${targetTx}px`);
+            playgroundElement.style.setProperty('--ty', `${targetTy}px`);
+            playgroundElement.classList.add('merging'); // Apply to target as well
+
+            // Store position on the target element for handleCombinationResult (still useful)
             playgroundElement.dataset.resultX = midX;
             playgroundElement.dataset.resultY = midY;
 
             selectedElements = [element1, element2]; // Set for processing
 
-            // Process combination after short delay for visual effect
+            // Process combination after animation completes (500ms) + small buffer
             setTimeout(() => {
-              processCombination();
-              sourceElement.remove(); // Remove the dragged element
-              // Target element (playgroundElement) will be removed in handleCombinationResult
-            }, 300);
+              processCombination(); // API call / result handling
+              // Elements are hidden by animation 'forwards', remove them from DOM after processing
+              sourceElement.remove();
+              playgroundElement.remove(); // Remove target element here now
+            }, 550); // Wait for animation to finish
           } else {
              console.error("Could not find element data for combination:", element1Id, element2Id);
           }
@@ -693,6 +797,13 @@ document.addEventListener('DOMContentLoaded', function() {
            e.dataTransfer.effectAllowed = 'move';
            this.classList.add('dragging');
 
+           // Dim other playground elements
+           document.querySelectorAll('#playground .element').forEach(el => {
+             if (el !== this) { // Don't dim the element being dragged
+               el.classList.add('dimmed-non-target');
+             }
+           });
+
            currentDraggedElementData = {
              id: elementId, // DB ID
              source: 'playground',
@@ -710,6 +821,10 @@ document.addEventListener('DOMContentLoaded', function() {
          // Remove drop-target class from other playground elements
          document.querySelectorAll('#playground .drop-target').forEach(el => {
              el.classList.remove('drop-target');
+         });
+         // Remove dimming from all playground elements on drag end
+         document.querySelectorAll('#playground .element.dimmed-non-target').forEach(el => {
+           el.classList.remove('dimmed-non-target');
          });
          // Reset data only if it matches the element ending the drag
          if (currentDraggedElementData?.domId === this.id) {
@@ -787,7 +902,12 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <p class="description">The combination API is not available. Please check connection in settings.</p>
       `;
-      setTimeout(resetCombinationZone, 4000);
+      // Apply shake animation
+      resultZone.classList.add('error-shake');
+      setTimeout(() => {
+        resultZone.classList.remove('error-shake');
+        resetCombinationZone(); // Reset after shake + delay
+      }, 4000); // Keep original delay, shake happens within it
       return;
     }
 
@@ -822,7 +942,13 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error during generateCombination call:', error);
       // Optionally update API status based on error type
       // updateApiStatus('unavailable');
-      setTimeout(resetCombinationZone, 4000);
+
+      // Apply shake animation
+      resultZone.classList.add('error-shake');
+      setTimeout(() => {
+        resultZone.classList.remove('error-shake');
+        resetCombinationZone(); // Reset after shake + delay
+      }, 4000); // Keep original delay
     }
   }
 
@@ -830,6 +956,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // resultElement now includes isNewGlobalDiscovery from the API
   async function handleCombinationResult(resultElement, inputElement1Id, inputElement2Id) {
     console.log("Handling combination result:", resultElement);
+
+    // Add to history log before checking local discovery
+    addHistoryItem(allElements[inputElement1Id], allElements[inputElement2Id], resultElement);
 
     // Check if this element is already in the player's discovered list (local check)
     const isNewLocalDiscovery = !discoveredElements.some(e => e.id === resultElement.id);
@@ -869,47 +998,53 @@ document.addEventListener('DOMContentLoaded', function() {
       renderCategories();
     }
 
-    // Show result in the result zone, including the global discovery status
-    resultZone.innerHTML = `
-      <div class="element">
+    // Show result in the result zone, including the global discovery status and applying animation
+    // Clear previous content first to ensure animation runs on new element
+    resultZone.innerHTML = '';
+
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'element'; // This class now has the result-appear animation
+    resultDiv.innerHTML = `
         <span class="element-icon">${resultElement.icon || '❓'}</span> ${resultElement.name}
         ${isNewGlobalDiscovery ? ' <span style="color: #ffd700; font-weight: bold;">(First Discovery!)</span>' : ''}
         ${!isNewGlobalDiscovery && isNewLocalDiscovery ? ' <span style="color: #4ecdc4;">(New Discovery!)</span>' : ''}
-      </div>
-      ${resultElement.description ? `<p class="description">${resultElement.description}</p>` : ''}
     `;
+    resultZone.appendChild(resultDiv);
+
+    // Add description below the element div
+    if (resultElement.description) {
+      const descriptionP = document.createElement('p');
+      descriptionP.className = 'description';
+      descriptionP.textContent = resultElement.description;
+      resultZone.appendChild(descriptionP);
+    }
 
     // Add the result element to the playground visually
     setTimeout(() => {
-      // Find the element that was the drop target (it has the combining class and position data)
-      const targetElement = document.querySelector('#playground .element.combining');
-      if (targetElement) {
-        let x, y;
-        // Use stored position data if available
-        if (targetElement.dataset.resultX && targetElement.dataset.resultY) {
-          x = parseFloat(targetElement.dataset.resultX);
-          y = parseFloat(targetElement.dataset.resultY);
-        } else {
-          // Fallback: use target element's current position
-          const rect = targetElement.getBoundingClientRect();
-          const playgroundRect = combinationZone.getBoundingClientRect();
-          x = (rect.left + rect.width / 2) - playgroundRect.left;
-          y = (rect.top + rect.height / 2) - playgroundRect.top;
-        }
-        targetElement.remove(); // Remove the drop target element
+      // Find the element that was the drop target (it has the merging class and position data now)
+      // Note: The target element is removed earlier in the drop handler after animation starts.
+      // We need to use the stored position data.
+      const storedResultX = playgroundElement?.dataset?.resultX; // Use optional chaining
+      const storedResultY = playgroundElement?.dataset?.resultY;
+
+      if (storedResultX && storedResultY) {
+        let x = parseFloat(storedResultX);
+        let y = parseFloat(storedResultY);
 
         addElementToPlayground(resultElement, x, y); // Add the new result element
 
-        // Flash effect for the new element
+
+        // Flash effect for the new element in the playground
         setTimeout(() => {
-          const newElementDiv = document.querySelector(`#playground [data-element-id="${resultElement.id}"]`);
-          if (newElementDiv) {
-            newElementDiv.classList.add('combining'); // Re-use class for flash
+          // Find the newly added element in the playground
+          const playgroundResultDiv = document.querySelector(`#playground [data-element-id="${resultElement.id}"]`);
+          if (playgroundResultDiv) {
+            playgroundResultDiv.classList.add('combining'); // Re-use pulse animation for flash
             setTimeout(() => {
-              newElementDiv.classList.remove('combining');
+              playgroundResultDiv.classList.remove('combining');
             }, 700);
           }
-        }, 100);
+        }, 100); // Short delay after adding to playground
 
       } else {
         console.warn("Could not find '.combining' element to position result. Adding to center.");
@@ -988,6 +1123,32 @@ document.addEventListener('DOMContentLoaded', function() {
     resetCombinationZone();
     // Make sure the result zone shows the default message
     resultZone.innerHTML = '<p>Drag elements to the playground and combine them</p>';
+  }
+
+  // Add an item to the history log
+  function addHistoryItem(element1, element2, resultElement) {
+    if (!element1 || !element2 || !resultElement) {
+      console.warn("Skipping history item due to missing element data.");
+      return;
+    }
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'history-item';
+    itemDiv.innerHTML = `
+      <span class="icon">${element1.icon || '❓'}</span> ${element1.name} +
+      <span class="icon">${element2.icon || '❓'}</span> ${element2.name}
+      <span class="equals">=</span>
+      <span class="icon">${resultElement.icon || '❓'}</span> ${resultElement.name}
+    `;
+
+    // Add to the top (since container is column-reverse)
+    historyItemsContainer.appendChild(itemDiv);
+
+    // Limit history items (e.g., keep last 10)
+    const maxHistoryItems = 10;
+    while (historyItemsContainer.children.length > maxHistoryItems) {
+      historyItemsContainer.removeChild(historyItemsContainer.firstChild); // Remove the oldest (which is visually at the top)
+    }
   }
 
   // Initialize the game
