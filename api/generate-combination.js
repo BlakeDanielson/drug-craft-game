@@ -154,7 +154,8 @@ module.exports = async (req, res) => {
       const resultElement = await getElementById(existingCombination.result_element_id);
       if (resultElement) {
         console.log('Returning cached element:', resultElement);
-        return res.status(200).json(resultElement); // Return the full element object
+        // Add isNewGlobalDiscovery flag (false for cached results)
+        return res.status(200).json({ ...resultElement, isNewGlobalDiscovery: false });
       } else {
         console.error(`Failed to fetch element details for cached result ID: ${existingCombination.result_element_id}`);
         // If cache is inconsistent, maybe proceed to generate? For now, error out.
@@ -292,8 +293,9 @@ module.exports = async (req, res) => {
     }
 
     // Return the final element data (either existing or newly created)
-    console.log('Returning final result element:', finalElementData);
-    return res.status(200).json(finalElementData);
+    // Add isNewGlobalDiscovery flag (true for newly generated combinations)
+    console.log('Returning final result element (new discovery):', finalElementData);
+    return res.status(200).json({ ...finalElementData, isNewGlobalDiscovery: true });
   } catch (error) {
     console.error('Error generating combination:', error);
     return res.status(500).json({ error: 'Failed to generate combination', message: error.message });

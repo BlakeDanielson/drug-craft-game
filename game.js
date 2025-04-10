@@ -827,14 +827,16 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Handle the result of a combination (now async)
+  // resultElement now includes isNewGlobalDiscovery from the API
   async function handleCombinationResult(resultElement, inputElement1Id, inputElement2Id) {
     console.log("Handling combination result:", resultElement);
 
     // Check if this element is already in the player's discovered list (local check)
-    const isNewDiscovery = !discoveredElements.some(e => e.id === resultElement.id);
+    const isNewLocalDiscovery = !discoveredElements.some(e => e.id === resultElement.id);
+    const isNewGlobalDiscovery = resultElement.isNewGlobalDiscovery; // Get flag from API response
 
-    if (isNewDiscovery) {
-      console.log("New discovery:", resultElement.name);
+    if (isNewLocalDiscovery) {
+      console.log("New local discovery:", resultElement.name);
       // Add to discovered elements locally first for immediate UI update
       discoveredElements.push(resultElement);
 
@@ -867,11 +869,12 @@ document.addEventListener('DOMContentLoaded', function() {
       renderCategories();
     }
 
-    // Show result in the result zone
+    // Show result in the result zone, including the global discovery status
     resultZone.innerHTML = `
       <div class="element">
         <span class="element-icon">${resultElement.icon || '❓'}</span> ${resultElement.name}
-        ${isNewDiscovery ? ' <span style="color: #4ecdc4;">(New Discovery!)</span>' : ''}
+        ${isNewGlobalDiscovery ? ' <span style="color: #ffd700; font-weight: bold;">(First Discovery!)</span>' : ''}
+        ${!isNewGlobalDiscovery && isNewLocalDiscovery ? ' <span style="color: #4ecdc4;">(New Discovery!)</span>' : ''}
       </div>
       ${resultElement.description ? `<p class="description">${resultElement.description}</p>` : ''}
     `;
